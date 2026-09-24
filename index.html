@@ -248,7 +248,6 @@
             <input type="file" id="pImageInputGallery" accept="image/*" style="display: none;" onchange="handleImageUpload(event)">
             
             <div style="display:flex; gap:10px; justify-content:center;">
-                <!-- Call Custom Camera for Photo Capture -->
                 <button class="btn-blue" style="width:auto; padding:6px 12px;" onclick="openPhotoCamera()"><i class="fas fa-camera"></i> Camera</button>
                 <button class="btn-gray" style="width:auto; padding:6px 12px;" onclick="document.getElementById('pImageInputGallery').click()"><i class="fas fa-image"></i> Gallery</button>
             </div>
@@ -429,7 +428,7 @@
         let activeCreditEditIndex = -1;
         let activeEditInvoiceIndex = -1; 
         let base64ImageString = ""; 
-        let currentCustomerDetailIndex = -1; // Global tracker for active customer details
+        let currentCustomerDetailIndex = -1;
 
         let activeSelectMode = null; 
         let selectedIndexes = new Set();
@@ -518,7 +517,6 @@
             if(isMqttConnected) { showSyncToast("Syncing to cloud..."); broadcastCloudData(); }
         }
 
-        // --- CUSTOMER LOGIC & RENDER ---
         function showCustomerSuggestions(q) {
             const box = document.getElementById('custSuggestions'); box.innerHTML = '';
             if(!q) { box.style.display = 'none'; return; }
@@ -579,7 +577,6 @@
                 customers[idx].name = name;
                 customers[idx].phone = phone;
                 
-                // 100% Sync Phone & Name to all existing Invoices
                 salesHistory.forEach(s => { 
                     if(s.custName === oldName) {
                         s.custName = name;
@@ -688,8 +685,7 @@
 
         function showCustomerDetails(idx) {
             currentCustomerDetailIndex = idx;
-            renderCustomerDetails();
-            showSection('customerDetailsSec');
+            showSection('customerDetailsSec'); // Bug Fixed! Now it won't crash
         }
 
         // --- PDF CLOUD HACK LOGIC (AppsGeyser Safe) ---
@@ -1570,12 +1566,13 @@
             if(id === 'trashSec') renderTrash();
             if(id === 'customersSec') renderCustomers();
             if(id === 'customerDetailsSec' && currentCustomerDetailIndex > -1) {
-                if(customers[currentCustomerDetailIndex]) showCustomerDetails(currentCustomerDetailIndex);
+                if(customers[currentCustomerDetailIndex]) renderCustomerDetails(); 
             }
         }
     </script>
 </body>
 </html>
+
 
 
 
