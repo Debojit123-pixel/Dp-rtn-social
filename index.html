@@ -33,7 +33,6 @@
             -webkit-tap-highlight-color: transparent; 
         }
 
-        /* Fixed Top Status Bar Spacer */
         #statusBarSpacer {
             position: fixed;
             top: 0;
@@ -61,7 +60,6 @@
         .tab { flex: 1; text-align: center; padding: 10px; font-weight: 600; font-size: 13px; cursor: pointer; border-bottom: 2px solid transparent; color: #666; }
         .tab.active { color: var(--primary-red); border-bottom: 2px solid var(--primary-red); background: #fff5f5; }
 
-        /* Card & Full Overlay Options Menu */
         .card { background: #fff; padding: 12px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 10px; transition: 0.2s; position: relative; overflow: hidden; user-select: none; -webkit-touch-callout: none; border: 2px solid transparent; }
         .card-img { width: 50px; height: 50px; border-radius: 6px; object-fit: cover; }
         .fallback-icon { width: 50px; height: 50px; border-radius: 6px; background: #e2e8f0; color: #a0aec0; display: flex; align-items: center; justify-content: center; font-size: 22px; }
@@ -74,7 +72,6 @@
         .opt-btn { width: 40px; height: 40px; border-radius: 50%; border: none; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.15); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
         .opt-btn:active { transform: scale(0.9); }
 
-        /* Selection Mode Bar */
         .selected-card { background: #fff5f5 !important; border-color: var(--primary-red) !important; transform: scale(0.98); }
         #selectionBar { 
             position: fixed; 
@@ -95,7 +92,6 @@
         #selectionBar.show { transform: translateY(0); }
         #selectionBar button { background: none; border: none; color: white; font-size: 18px; margin-left: 20px; cursor: pointer; }
 
-        /* Fast Scanner Modal */
         #customScannerModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); z-index: 100001; justify-content: center; align-items: center; flex-direction: column; padding: 15px; }
         .scanner-container { position: relative; width: 100%; max-width: 360px; border-radius: 12px; overflow: hidden; background: #000; box-shadow: 0 5px 20px rgba(230, 57, 70, 0.4); border: 2px solid var(--primary-red); }
         #reader { width: 100%; }
@@ -104,7 +100,6 @@
         .scanner-controls { display: flex; gap: 10px; margin-top: 15px; width: 100%; max-width: 360px; }
         .scan-btn { flex: 1; padding: 12px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 14px; }
 
-        /* General Modals */
         #invoiceModal, #creditPayModal { display: none; position: fixed; top: var(--status-bar-height); left: 0; width: 100%; height: calc(100% - var(--status-bar-height)); background: #fff; z-index: 5000; overflow-y: auto; }
         .top-bar { background: #fff; padding: 12px 15px; display: flex; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 5001; }
         .top-bar button { background: none; border: none; font-size: 16px; font-weight: 600; color: var(--text-dark); display: flex; gap: 8px; }
@@ -118,21 +113,21 @@
         
         .suggestions-box { position: absolute; width: 100%; background: #fff; border: 1px solid #ddd; border-radius: 8px; max-height: 200px; overflow-y: auto; z-index: 1000; display: none; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         .suggestion-item { padding: 10px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 10px; cursor: pointer; }
-        #syncIndicator { position: fixed; top: 45px; right: 10px; background: #333; color: #fff; padding: 5px 10px; border-radius: 20px; font-size: 10px; z-index: 9999; display: none; }
+        
+        #syncIndicator { position: fixed; top: 45px; right: 10px; background: #333; color: #fff; padding: 5px 12px; border-radius: 20px; font-size: 11px; z-index: 9999; display: none; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
     </style>
 </head>
 <body onclick="closeAllOptions(event)">
 
-    <!-- Red Top Status Bar Spacer (Height 40px) -->
     <div id="statusBarSpacer"></div>
 
-    <!-- Selection Bar -->
     <div id="selectionBar">
         <div><i class="fas fa-check-circle"></i> <span id="selectionCount">0 Selected</span></div>
         <div id="selectionActions"></div>
     </div>
 
-    <div id="syncIndicator"><i class="fas fa-sync fa-spin"></i> Syncing...</div>
+    <!-- Live Sync Alert Indicator -->
+    <div id="syncIndicator"><i class="fas fa-sync fa-spin"></i> Syncing Data...</div>
 
     <!-- HOME SECTION -->
     <div id="home" class="section active">
@@ -226,8 +221,12 @@
             <p>Total Received: <strong style="color:var(--green-paid);">₹<span id="repReceived">0.00</span></strong></p>
             <p>Total Pending Credit: <strong style="color:var(--orange-credit);">₹<span id="repDue">0.00</span></strong></p>
         </div>
-        <button class="btn-gray" style="margin: 15px 0;" onclick="showSection('trashSec')"><i class="fas fa-trash-alt"></i> View Trash Bin</button>
-        <p style="font-size:11px; color:gray; margin-top:20px; text-align:center;">Your data is automatically synced via MQTT in real-time.</p>
+        
+        <div style="display:flex; gap:10px; margin-top:15px;">
+            <button class="btn-blue" style="flex:1;" onclick="forceSyncPull()"><i class="fas fa-sync"></i> Refresh Data</button>
+            <button class="btn-gray" style="flex:1;" onclick="showSection('trashSec')"><i class="fas fa-trash-alt"></i> View Trash Bin</button>
+        </div>
+        <p style="font-size:11px; color:gray; margin-top:20px; text-align:center;">Cloud Synchronization via MQTT is Active.</p>
     </div>
 
     <!-- TRASH BIN SECTION -->
@@ -330,43 +329,105 @@
         let isPressing = false;
         let activeOptionsId = null; 
 
-        // MQTT Sync
-        const mqttTopic = 'bholanath_store_debojit_pos_data_2026'; 
+        // --- RELIABLE REAL-TIME MQTT SYNC ENGINE ---
+        const mqttDataTopic = 'bholanath_store_debojit_pos_data_2026';
+        const mqttReqTopic  = 'bholanath_store_debojit_pos_req_2026';
         const clientId = 'pos_' + Math.random().toString(16).substr(2, 8);
         let lastSyncTime = parseInt(localStorage.getItem('bs_last_sync')) || 0;
         let isMqttConnected = false;
-        const mqttClient = mqtt.connect('wss://broker.hivemq.com:8000/mqtt', { clientId: clientId });
+        
+        const mqttClient = mqtt.connect('wss://broker.hivemq.com:8000/mqtt', { clientId: clientId, keepalive: 60 });
 
-        mqttClient.on('connect', () => { isMqttConnected = true; mqttClient.subscribe(mqttTopic); });
+        mqttClient.on('connect', () => { 
+            isMqttConnected = true; 
+            mqttClient.subscribe(mqttDataTopic);
+            mqttClient.subscribe(mqttReqTopic);
+
+            // New Device: Ask existing devices for the latest data immediately
+            mqttClient.publish(mqttReqTopic, JSON.stringify({ sender: clientId }));
+        });
+
         mqttClient.on('message', (topic, message) => {
             try {
-                const data = JSON.parse(message.toString());
-                if (data.timestamp && data.timestamp > lastSyncTime) {
-                    products = data.products || []; salesHistory = data.salesHistory || []; trashHistory = data.trashHistory || [];
-                    lastSyncTime = data.timestamp;
-                    localStorage.setItem('bs_products', JSON.stringify(products));
-                    localStorage.setItem('bs_sales', JSON.stringify(salesHistory));
-                    localStorage.setItem('bs_trash', JSON.stringify(trashHistory));
-                    localStorage.setItem('bs_last_sync', lastSyncTime);
-                    renderProducts(); renderHistory(); renderTrash(); updateReports();
+                // If another phone opened the app and requested data, send the full dataset if we have data
+                if (topic === mqttReqTopic) {
+                    const req = JSON.parse(message.toString());
+                    if (req.sender !== clientId && (products.length > 0 || salesHistory.length > 0)) {
+                        broadcastCloudData();
+                    }
+                    return;
+                }
+
+                // If receiving updated data from cloud
+                if (topic === mqttDataTopic) {
+                    const data = JSON.parse(message.toString());
+                    if (data.sender !== clientId && data.timestamp && data.timestamp > lastSyncTime) {
+                        products = data.products || []; 
+                        salesHistory = data.salesHistory || []; 
+                        trashHistory = data.trashHistory || [];
+                        lastSyncTime = data.timestamp;
+
+                        localStorage.setItem('bs_products', JSON.stringify(products));
+                        localStorage.setItem('bs_sales', JSON.stringify(salesHistory));
+                        localStorage.setItem('bs_trash', JSON.stringify(trashHistory));
+                        localStorage.setItem('bs_last_sync', lastSyncTime);
+
+                        renderProducts(); 
+                        renderHistory(); 
+                        renderTrash(); 
+                        updateReports();
+                        
+                        showSyncToast("Data updated from another device!");
+                    }
                 }
             } catch(e) {}
         });
 
-        window.onload = () => { renderProducts(); renderHistory(); updateReports(); }
+        function broadcastCloudData() {
+            if(!isMqttConnected) return;
+            const payload = JSON.stringify({ 
+                products, 
+                salesHistory, 
+                trashHistory, 
+                timestamp: lastSyncTime,
+                sender: clientId 
+            });
+            mqttClient.publish(mqttDataTopic, payload, { retain: true, qos: 1 });
+        }
+
+        function forceSyncPull() {
+            if(isMqttConnected) {
+                showSyncToast("Requesting data from cloud...");
+                mqttClient.publish(mqttReqTopic, JSON.stringify({ sender: clientId }));
+            } else {
+                alert("Internet not connected to sync broker.");
+            }
+        }
+
+        function showSyncToast(msg) {
+            const ind = document.getElementById('syncIndicator');
+            ind.innerHTML = `<i class="fas fa-sync fa-spin"></i> ${msg}`;
+            ind.style.display = 'block';
+            setTimeout(() => { ind.style.display = 'none'; }, 2000);
+        }
+
+        window.onload = () => { 
+            renderProducts(); 
+            renderHistory(); 
+            updateReports(); 
+        }
 
         function saveData() {
             localStorage.setItem('bs_products', JSON.stringify(products));
             localStorage.setItem('bs_sales', JSON.stringify(salesHistory));
             localStorage.setItem('bs_trash', JSON.stringify(trashHistory));
-            lastSyncTime = Date.now(); localStorage.setItem('bs_last_sync', lastSyncTime);
+            lastSyncTime = Date.now(); 
+            localStorage.setItem('bs_last_sync', lastSyncTime);
             updateReports();
 
             if(isMqttConnected) {
-                const indicator = document.getElementById('syncIndicator'); indicator.style.display = 'block';
-                const payload = JSON.stringify({ products, salesHistory, trashHistory, timestamp: lastSyncTime });
-                mqttClient.publish(mqttTopic, payload, { retain: true }); 
-                setTimeout(() => { indicator.style.display = 'none'; }, 1000);
+                showSyncToast("Syncing to other phones...");
+                broadcastCloudData();
             }
         }
 
@@ -453,7 +514,6 @@
         let activeScannerMode = '';
         let currentFacingMode = "environment"; 
         let isFlashlightOn = false;
-        
         let candidateText = "";
         let candidateCount = 0;
         let isScanningActive = false;
@@ -618,10 +678,10 @@
             const file = e.target.files[0]; if(!file) return; const reader = new FileReader();
             reader.onload = function(event) {
                 const img = new Image(); img.onload = function() {
-                    const canvas = document.createElement('canvas'); const size = 150;
+                    const canvas = document.createElement('canvas'); const size = 120; // 120px to keep payload light for MQTT
                     canvas.width = size; canvas.height = size; const minRatio = Math.min(img.width, img.height);
                     canvas.getContext('2d').drawImage(img, (img.width - minRatio) / 2, (img.height - minRatio) / 2, minRatio, minRatio, 0, 0, size, size);
-                    base64ImageString = canvas.toDataURL('image/jpeg', 0.6); 
+                    base64ImageString = canvas.toDataURL('image/jpeg', 0.5); 
                     document.getElementById('pImgFallback').style.display = 'none';
                     document.getElementById('pImgPreview').src = base64ImageString; document.getElementById('pImgPreview').style.display = 'block';
                 }; img.src = event.target.result;
@@ -635,7 +695,6 @@
             showSection('addProductModal');
         }
 
-        // --- SAVE PRODUCT WITH DUPLICATE CHECK ---
         function saveProduct() {
             const barcode = document.getElementById('pBarcode').value.trim(); 
             const name = document.getElementById('pName').value.trim(); 
@@ -647,14 +706,12 @@
                 return; 
             }
 
-            // Check Duplicate Product Name
             const isNameDuplicate = products.some((p, idx) => idx !== editIndex && p.name.trim().toLowerCase() === name.toLowerCase());
             if(isNameDuplicate) {
                 alert("This product name already exists! Please use a unique name.");
                 return;
             }
 
-            // Check Duplicate Barcode (if barcode is provided)
             if(barcode) {
                 const isBarcodeDuplicate = products.some((p, idx) => idx !== editIndex && p.barcode && p.barcode.trim().toLowerCase() === barcode.toLowerCase());
                 if(isBarcodeDuplicate) {
@@ -888,6 +945,7 @@
     </script>
 </body>
 </html>
+
 
 
 
