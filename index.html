@@ -92,7 +92,8 @@
         .invoice-table th { background: #f8f9fa; font-weight: 600; }
         
         .suggestions-box { position: absolute; width: 100%; background: #fff; border: 1px solid #ddd; border-radius: 8px; max-height: 200px; overflow-y: auto; z-index: 1000; display: none; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .suggestion-item { padding: 10px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 10px; cursor: pointer; }
+        .suggestion-item { padding: 10px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13px; }
+        .suggestion-item:hover { background: #f8f9fa; }
         
         #syncIndicator { position: fixed; top: 45px; right: 10px; background: #222; color: #fff; padding: 6px 14px; border-radius: 20px; font-size: 11px; z-index: 9999; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.3); font-weight: 500; }
 
@@ -138,6 +139,12 @@
         
         #successCloseBtn { position: absolute; top: 30px; right: 25px; background: none; border: none; color: white; font-size: 32px; cursor: pointer; display: none; opacity: 0.8; transition: 0.2s; }
         #successCloseBtn:active { transform: scale(0.8); }
+
+        @media print {
+            body * { visibility: hidden; }
+            #printArea, #printArea * { visibility: visible; }
+            #printArea { position: absolute; left: 0; top: 0; width: 100%; }
+        }
     </style>
 </head>
 <body onclick="closeAllOptions(event)">
@@ -183,14 +190,19 @@
             <button class="btn-red" style="width: auto; padding: 6px 12px; background:#333;" onclick="showSection('home')">Back</button>
         </div>
         <div style="background:#fff; padding:10px; border-radius:8px; margin-bottom:15px; border-left:3px solid var(--green-paid); box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-            <input type="text" id="custName" placeholder="Customer Name" style="margin-bottom:8px;">
+            
+            <div style="position:relative;">
+                <input type="text" id="custName" placeholder="Customer Name" style="margin-bottom:8px;" oninput="showCustomerSuggestions(this.value)" autocomplete="off">
+                <div id="custSuggestions" class="suggestions-box" style="top: 42px;"></div>
+            </div>
             <input type="tel" id="custPhone" placeholder="Phone Number (Optional)" style="margin-bottom:0;">
         </div>
+        
         <div style="display:flex; gap:8px; position:relative;" id="searchProductGroup">
-            <input type="text" id="searchProduct" placeholder="Search product..." oninput="showSuggestions(this.value)" style="flex:1;">
+            <input type="text" id="searchProduct" placeholder="Search product..." oninput="showProductSuggestions(this.value)" style="flex:1;">
             <button class="btn-red" style="width:45px; height:42px; padding:0;" onclick="openScanner('sell')"><i class="fas fa-barcode"></i></button>
             <button class="btn-gray" id="btnDirectEntry" style="width:45px; height:42px; padding:0; background:#f4a261; display:none;" onclick="addDirectAmountItem()" title="Direct Amount Entry"><i class="fas fa-keyboard"></i></button>
-            <div id="suggestions" class="suggestions-box"></div>
+            <div id="suggestions" class="suggestions-box" style="top:42px;"></div>
         </div>
         <div id="cartList" style="min-height: 100px;"></div>
         
@@ -245,20 +257,35 @@
         <button class="btn-red" onclick="saveProduct()">Save Product</button>
     </div>
 
-    <!-- REPORTS & TRASH SECTION -->
+    <!-- REPORTS & OTHER OPTIONS SECTION -->
     <div id="reports" class="section">
-        <h2>Business Reports</h2>
-        <div class="card" style="display:block; border:none; pointer-events:none;">
+        <h2>Business Dashboard</h2>
+        <div class="card" style="display:block; border:none; pointer-events:none; margin-bottom: 15px;">
             <p>Total Sales: <strong style="color:var(--primary-red); font-size:18px;">₹<span id="repTotalSales">0.00</span></strong></p>
             <p>Total Received: <strong style="color:var(--green-paid);">₹<span id="repReceived">0.00</span></strong></p>
             <p>Total Pending Credit: <strong style="color:var(--orange-credit);">₹<span id="repDue">0.00</span></strong></p>
         </div>
         
-        <div style="display:flex; gap:10px; margin-top:15px;">
-            <button class="btn-blue" style="flex:1;" onclick="forceSyncPull()"><i class="fas fa-sync"></i> Refresh Data</button>
-            <button class="btn-gray" style="flex:1;" onclick="showSection('trashSec')"><i class="fas fa-trash-alt"></i> View Trash Bin</button>
+        <div style="display:flex; gap:10px; margin-top:10px;">
+            <button class="btn-green" style="flex:1;" onclick="showSection('customersSec')"><i class="fas fa-users"></i> Customers</button>
+            <button class="btn-gray" style="flex:1;" onclick="showSection('trashSec')"><i class="fas fa-trash-alt"></i> Trash Bin</button>
         </div>
+        <div style="display:flex; gap:10px; margin-top:10px;">
+            <button class="btn-blue" style="width: 100%;" onclick="forceSyncPull()"><i class="fas fa-sync"></i> Refresh Cloud Data</button>
+        </div>
+        
         <p id="cloudStatusText" style="font-size:12px; color:#2a9d8f; margin-top:15px; text-align:center; font-weight:600;"><i class="fas fa-circle" style="font-size:8px;"></i> Checking Cloud Connection...</p>
+    </div>
+
+    <!-- CUSTOMERS LIST SECTION -->
+    <div id="customersSec" class="section">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h2>Customer List</h2>
+            <button class="btn-red" style="width: auto; padding: 6px 12px; background:#333;" onclick="showSection('reports')">Back</button>
+        </div>
+        <p style="font-size:11px; color:gray; margin-bottom:10px;">View all registered customers and their pending credits.</p>
+        <input type="text" id="searchCustomer" placeholder="Search by Name or Phone..." oninput="renderCustomers()">
+        <div id="customerList"></div>
     </div>
 
     <!-- TRASH BIN SECTION -->
@@ -301,7 +328,7 @@
         </div>
         <div style="padding: 20px; display:flex; flex-direction:column; gap:10px;">
             <button class="btn-green" onclick="shareOnWhatsApp()"><i class="fab fa-whatsapp"></i> WhatsApp Share</button>
-            <button class="btn-blue" onclick="downloadInvoicePDF()"><i class="fas fa-file-pdf"></i> Download PDF (Cloud Hack)</button>
+            <button class="btn-blue" onclick="exportPDFUniversal()"><i class="fas fa-print"></i> Print / Save as PDF</button>
             <button class="btn-red" id="saveInvoiceBtn" onclick="saveAndCloseInvoice()"><i class="fas fa-check-circle"></i> Save & Done</button>
         </div>
     </div>
@@ -347,6 +374,8 @@
         let products = JSON.parse(localStorage.getItem('bs_products')) || [];
         let salesHistory = JSON.parse(localStorage.getItem('bs_sales')) || [];
         let trashHistory = JSON.parse(localStorage.getItem('bs_trash')) || [];
+        let customers = JSON.parse(localStorage.getItem('bs_customers')) || []; // NEW: Customer Array
+        
         let cart = []; 
         let totalAmount = 0;
         let currentTab = 'all';
@@ -385,18 +414,22 @@
             try {
                 if (topic === mqttReqTopic) {
                     const req = JSON.parse(message.toString());
-                    if (req.sender !== clientId && (products.length > 0 || salesHistory.length > 0)) { broadcastCloudData(); }
+                    if (req.sender !== clientId && (products.length > 0 || salesHistory.length > 0 || customers.length > 0)) { broadcastCloudData(); }
                     return;
                 }
                 if (topic === mqttDataTopic) {
                     const data = JSON.parse(message.toString());
                     if (data.sender !== clientId && data.timestamp && data.timestamp > lastSyncTime) {
                         products = data.products || []; salesHistory = data.salesHistory || []; trashHistory = data.trashHistory || [];
+                        customers = data.customers || customers; // Update customers from cloud
                         lastSyncTime = data.timestamp;
-                        localStorage.setItem('bs_products', JSON.stringify(products)); localStorage.setItem('bs_sales', JSON.stringify(salesHistory));
-                        localStorage.setItem('bs_trash', JSON.stringify(trashHistory)); localStorage.setItem('bs_last_sync', lastSyncTime);
-                        renderProducts(); renderHistory(); renderTrash(); updateReports();
-                        showSyncToast("Data synced from other phone!");
+                        localStorage.setItem('bs_products', JSON.stringify(products)); 
+                        localStorage.setItem('bs_sales', JSON.stringify(salesHistory));
+                        localStorage.setItem('bs_trash', JSON.stringify(trashHistory)); 
+                        localStorage.setItem('bs_customers', JSON.stringify(customers));
+                        localStorage.setItem('bs_last_sync', lastSyncTime);
+                        renderProducts(); renderHistory(); renderTrash(); updateReports(); renderCustomers();
+                        showSyncToast("Data synced from cloud!");
                     }
                 }
             } catch(e) {}
@@ -412,7 +445,7 @@
         }
         function broadcastCloudData() {
             if(!isMqttConnected) return;
-            const payload = JSON.stringify({ products, salesHistory, trashHistory, timestamp: lastSyncTime, sender: clientId });
+            const payload = JSON.stringify({ products, salesHistory, trashHistory, customers, timestamp: lastSyncTime, sender: clientId });
             mqttClient.publish(mqttDataTopic, payload, { retain: true, qos: 0 });
         }
         function forceSyncPull() {
@@ -430,12 +463,71 @@
 
         function saveData() {
             localStorage.setItem('bs_products', JSON.stringify(products)); localStorage.setItem('bs_sales', JSON.stringify(salesHistory));
-            localStorage.setItem('bs_trash', JSON.stringify(trashHistory)); lastSyncTime = Date.now(); localStorage.setItem('bs_last_sync', lastSyncTime);
+            localStorage.setItem('bs_trash', JSON.stringify(trashHistory)); localStorage.setItem('bs_customers', JSON.stringify(customers));
+            lastSyncTime = Date.now(); localStorage.setItem('bs_last_sync', lastSyncTime);
             updateReports();
-            if(isMqttConnected) { showSyncToast("Syncing to other phones..."); broadcastCloudData(); }
+            if(isMqttConnected) { showSyncToast("Syncing to cloud..."); broadcastCloudData(); }
         }
 
-        // --- CLAUDE'S HYBRID CLOUD HACK PDF EXPORT (AppsGeyser WebView Safe) ---
+        // --- CUSTOMER AUTOSUGGEST LOGIC ---
+        function showCustomerSuggestions(q) {
+            const box = document.getElementById('custSuggestions'); box.innerHTML = '';
+            if(!q) { box.style.display = 'none'; return; }
+            let matches = customers.filter(c => c.name.toLowerCase().includes(q.toLowerCase()) || (c.phone && c.phone.includes(q)));
+            
+            if(matches.length > 0) {
+                box.style.display = 'block';
+                matches.forEach(c => { 
+                    box.innerHTML += `<div class="suggestion-item" onclick="selectCustomer('${c.name}', '${c.phone||''}')">
+                        <i class="fas fa-user" style="color:gray;"></i> <span>${c.name} ${c.phone ? ' - '+c.phone : ''}</span>
+                    </div>`; 
+                });
+            } else {
+                box.style.display = 'none';
+            }
+        }
+
+        function selectCustomer(name, phone) {
+            document.getElementById('custName').value = name;
+            document.getElementById('custPhone').value = phone;
+            document.getElementById('custSuggestions').style.display = 'none';
+        }
+
+        // --- CUSTOMER LIST RENDER (Reports Section) ---
+        function renderCustomers() {
+            const list = document.getElementById('customerList'); 
+            const q = document.getElementById('searchCustomer').value.toLowerCase();
+            
+            // Calculate pending dues dynamically from Sales History
+            let custDues = {};
+            salesHistory.forEach(s => {
+                if(s.status === 'CREDIT' && s.custName !== "Walk-in Customer") {
+                    custDues[s.custName] = (custDues[s.custName] || 0) + s.due;
+                }
+            });
+
+            let filtered = customers.filter(c => c.name.toLowerCase().includes(q) || (c.phone && c.phone.includes(q)));
+            filtered.sort((a, b) => a.name.localeCompare(b.name));
+
+            list.innerHTML = filtered.length === 0 ? '<p style="text-align:center;">No customers found.</p>' : '';
+            
+            filtered.forEach(c => {
+                let due = custDues[c.name] || 0;
+                list.innerHTML += `
+                <div class="card" style="border-left:4px solid ${due > 0 ? 'var(--primary-red)' : 'var(--green-paid)'}; pointer-events:auto; margin-bottom:8px;">
+                    <div class="fallback-icon" style="width:40px;height:40px;font-size:18px;background:#e9ecef;color:#6c757d;"><i class="fas fa-user"></i></div>
+                    <div class="card-content" style="pointer-events:none;">
+                        <h4 style="font-size:14px;">${c.name}</h4>
+                        <p style="font-size:11px;color:gray;">Phone: ${c.phone || 'N/A'}</p>
+                        ${due > 0 ? `<h4 style="font-size:13px; color:var(--primary-red); margin-top:3px;">Pending Credit: ₹${due.toFixed(2)}</h4>` 
+                                  : `<h4 style="font-size:13px; color:var(--green-paid); margin-top:3px;">No Dues</h4>`}
+                    </div>
+                </div>`;
+            });
+        }
+
+
+        // --- PDF EXPORT / WHATSAPP ---
         function prepareInvoiceDOM(invData) {
             document.getElementById('invCustName').innerText = invData.custName;
             document.getElementById('invCustPhone').innerText = invData.custPhone || '';
@@ -468,96 +560,12 @@
             }
         }
 
-        function toast(msg, ms) {
-            let t = document.getElementById('pdfToast');
-            if (!t) {
-                t = document.createElement('div');
-                t.id = 'pdfToast';
-                t.style.cssText = 'position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#222;color:#fff;' +
-                    'padding:10px 18px;border-radius:20px;font-size:13px;z-index:1000001;display:none;max-width:85%;text-align:center;';
-                document.body.appendChild(t);
-            }
-            t.textContent = msg;
-            t.style.display = 'block';
-            clearTimeout(t._h);
-            if (ms) t._h = setTimeout(function () { t.style.display = 'none'; }, ms);
-        }
-        function hideToast() { let t = document.getElementById('pdfToast'); if (t) t.style.display = 'none'; }
-
-        function showLinkSheet(link, name) {
-            let old = document.getElementById('pdfLinkSheet'); if (old) old.remove();
-            let wrap = document.createElement('div');
-            wrap.id = 'pdfLinkSheet';
-            wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000000;display:flex;align-items:flex-end;';
-            let wa = 'https://wa.me/?text=' + encodeURIComponent('Invoice from Bholanath Store: ' + link);
-            let btn = 'display:block;text-align:center;text-decoration:none;border:none;border-radius:8px;padding:12px;' +
-                'font-weight:600;font-size:14px;width:100%;margin-top:10px;color:#fff;cursor:pointer;';
-            wrap.innerHTML =
-                '<div style="background:#fff;width:100%;border-radius:16px 16px 0 0;padding:18px 16px 24px;">' +
-                '<div style="font-weight:700;font-size:16px;margin-bottom:4px;"><i class="fas fa-file-pdf" style="color:#e63946"></i> PDF Ready!</div>' +
-                '<div style="font-size:12px;color:#666;margin-bottom:10px;">' + name + '</div>' +
-                '<a href="' + link + '" target="_blank" rel="noopener" style="' + btn + 'background:#e63946;">Open / Download PDF</a>' +
-                '<a href="' + wa + '" target="_blank" rel="noopener" style="' + btn + 'background:#25D366;">Share on WhatsApp</a>' +
-                '<button id="pdfCopyBtn" style="' + btn + 'background:#0077b6;">Copy Link</button>' +
-                '<button id="pdfCloseBtn" style="' + btn + 'background:#6c757d;">Close</button></div>';
-            document.body.appendChild(wrap);
-            document.getElementById('pdfCopyBtn').onclick = function () {
-                if (navigator.clipboard) { navigator.clipboard.writeText(link); }
-                toast('Link copied to clipboard!', 1800);
-            };
-            document.getElementById('pdfCloseBtn').onclick = function () { wrap.remove(); };
-        }
-
-        window.downloadInvoicePDF = async function () {
+        function exportPDFUniversal() {
             if(!currentInvoiceData) return;
             prepareInvoiceDOM(currentInvoiceData);
+            window.print();
+        }
 
-            let el = document.getElementById('printArea');
-            let name = 'Invoice_' + currentInvoiceData.invNo + '.pdf';
-            toast('Generating PDF...');
-
-            try {
-                let blob = await html2pdf().set({
-                    margin: 8,
-                    image: { type: 'jpeg', quality: 0.95 },
-                    html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
-                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-                }).from(el).outputPdf('blob');
-
-                let ua = navigator.userAgent || '';
-                let isWebView = /Android/i.test(ua) && /;\s*wv\)|Version\/\d+\.\d+/i.test(ua);
-
-                if (!isWebView) {
-                    let url = URL.createObjectURL(blob);
-                    let a = document.createElement('a');
-                    a.href = url; a.download = name;
-                    document.body.appendChild(a); a.click();
-                    setTimeout(function () { a.remove(); URL.revokeObjectURL(url); }, 4000);
-                    toast('PDF Downloaded', 2000);
-                    return;
-                }
-
-                toast('Uploading to Cloud Bridge...');
-                let fd = new FormData();
-                fd.append('file', blob, name);
-                
-                let res = await fetch('https://tmpfiles.org/api/v1/upload', { method: 'POST', body: fd });
-                let json = await res.json();
-                let dlUrl = json && json.data && json.data.url;
-
-                if (!dlUrl) throw new Error('Upload failed');
-                dlUrl = dlUrl.replace('http://', 'https://').replace('tmpfiles.org/', 'tmpfiles.org/dl/');
-                
-                hideToast();
-                showLinkSheet(dlUrl, name);
-
-            } catch (err) {
-                console.error(err);
-                toast('Failed. Please check internet connection.', 4000);
-            }
-        };
-
-        // --- WHATSAPP SHARE ---
         function shareOnWhatsApp() {
             if(!currentInvoiceData) return;
             let inv = currentInvoiceData;
@@ -566,7 +574,6 @@
             window.location.href = whatsappUrl;
         }
 
-        // --- UNIQUE SEQUENTIAL INVOICE NUMBER GENERATOR ---
         function getNextInvoiceNo() {
             let maxNum = 0;
             salesHistory.forEach(s => {
@@ -580,7 +587,6 @@
             return "BS-" + String(nextNum).padStart(5, '0');
         }
 
-        // --- SUCCESS ANIMATION & SOUND ENGINE ---
         function playSuccessSound() {
             try {
                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -652,6 +658,7 @@
         function closeAllOptions(e) {
             document.querySelectorAll('.card-opts').forEach(el => el.classList.remove('show'));
             activeOptionsId = null;
+            document.getElementById('custSuggestions').style.display = 'none'; // Hide suggestions if clicked outside
         }
         function closeOptionsFix(e) { stopProp(e); closeAllOptions(); }
 
@@ -947,6 +954,7 @@
                 </div>`;
             });
         }
+
         function editP(index) {
             const p = products[index]; document.getElementById('editIndex').value = index; document.getElementById('productModalTitle').innerText = "Edit Product";
             document.getElementById('pName').value = p.name; document.getElementById('pPrice').value = p.price; document.getElementById('pBarcode').value = p.barcode || '';
@@ -956,7 +964,7 @@
             showSection('addProductModal');
         }
 
-        function showSuggestions(q) {
+        function showProductSuggestions(q) {
             const box = document.getElementById('suggestions'); box.innerHTML = '';
             if(!q) { box.style.display = 'none'; return; }
             let matches = products.filter(p => p.name.toLowerCase().includes(q.toLowerCase()));
@@ -965,6 +973,7 @@
                 matches.forEach(p => { box.innerHTML += `<div class="suggestion-item" onclick='addToCart(${JSON.stringify(p)})'>${getProductImgHtml(p.image, '')} <span style="margin-left:10px;">${p.name} - ₹${p.price}</span></div>`; });
             } else box.style.display = 'none';
         }
+
         function addToCart(p) {
             const existing = cart.find(item => item.name === p.name);
             if(existing) existing.qty += 1; else cart.push({ ...p, cartPrice: p.price, qty: 1 });
@@ -993,6 +1002,7 @@
             });
             document.getElementById('cartTotal').innerText = totalAmount.toFixed(2); calculateDue();
         }
+
         function calculateDue() {
             let rec = parseFloat(document.getElementById('receivedAmt').value) || 0;
             let due = totalAmount - rec; document.getElementById('dueAmt').innerText = (due > 0 ? due : 0).toFixed(2);
@@ -1000,6 +1010,22 @@
 
         function generateInvoice(isHistory, hData = null) {
             if(!isHistory && cart.length === 0) { alert("Cart is empty!"); return; }
+            
+            let cName = document.getElementById('custName').value.trim() || "Walk-in Customer";
+            let cPhone = document.getElementById('custPhone').value.trim();
+
+            if(!isHistory) {
+                // DUPLICATE PHONE VALIDATION (Only check if a phone number is entered)
+                if(cPhone) {
+                    let existingWithPhone = customers.find(c => c.phone === cPhone);
+                    // If phone exists, but it's assigned to a DIFFERENT name -> Show Alert and Stop!
+                    if(existingWithPhone && existingWithPhone.name.toLowerCase() !== cName.toLowerCase()) {
+                        alert("⚠️ Error: This phone number is already registered to customer '" + existingWithPhone.name + "'.\nDuplicate numbers are not allowed.");
+                        return; // Stop invoice generation
+                    }
+                }
+            }
+
             let rec = isHistory ? hData.received : (parseFloat(document.getElementById('receivedAmt').value) || 0);
             let upi = isHistory ? hData.upi : document.getElementById('upiId').value;
             let total = isHistory ? hData.total : totalAmount;
@@ -1008,7 +1034,7 @@
             const invNumber = isHistory ? hData.invNo : getNextInvoiceNo();
 
             const data = isHistory ? hData : {
-                custName: document.getElementById('custName').value || "Walk-in Customer", custPhone: document.getElementById('custPhone').value,
+                custName: cName, custPhone: cPhone,
                 upi: upi, date: new Date().toLocaleString(), invNo: invNumber,
                 items: [...cart], total, received: rec, due, status
             };
@@ -1023,7 +1049,23 @@
             if (activeEditInvoiceIndex > -1) {
                 salesHistory[activeEditInvoiceIndex] = currentInvoiceData;
                 activeEditInvoiceIndex = -1;
-            } else { salesHistory.push(currentInvoiceData); }
+            } else { 
+                salesHistory.push(currentInvoiceData); 
+                
+                // SAVE NEW CUSTOMER OR UPDATE PHONE
+                let cName = currentInvoiceData.custName;
+                let cPhone = currentInvoiceData.custPhone;
+                if(cName !== "Walk-in Customer") {
+                    let existingCust = customers.find(c => c.name.toLowerCase() === cName.toLowerCase());
+                    if(existingCust) {
+                        // If customer exists but didn't have phone earlier, add it now
+                        if(cPhone && !existingCust.phone) existingCust.phone = cPhone;
+                    } else {
+                        // Completely new customer
+                        customers.push({ name: cName, phone: cPhone });
+                    }
+                }
+            }
             saveData(); 
             
             document.getElementById('invoiceModal').style.display='none'; 
@@ -1037,6 +1079,7 @@
             document.getElementById('receivedAmt').value = ''; document.getElementById('upiId').value = '';
             updateCart();
         }
+
         function closeInvoiceUI() { document.getElementById('invoiceModal').style.display='none'; document.getElementById('bottomNav').style.display='flex'; }
 
         function switchTab(tab) { currentTab = tab; exitSelectionMode(); document.querySelectorAll('.tab').forEach(t => t.classList.remove('active')); document.getElementById('tab-' + tab).classList.add('active'); renderHistory(); }
@@ -1116,19 +1159,27 @@
         }
 
         function updateReports() {
-            let tSale=0, tRec=0, tDue=0; salesHistory.forEach(s => { tSale+=s.total; tRec+=s.received; tDue+=s.due; });
-            document.getElementById('repTotalSales').innerText = tSale.toFixed(2); document.getElementById('repReceived').innerText = tRec.toFixed(2); document.getElementById('repDue').innerText = tDue.toFixed(2);
+            let tSale=0, tRec=0, tDue=0; 
+            salesHistory.forEach(s => { tSale+=s.total; tRec+=s.received; tDue+=s.due; });
+            document.getElementById('repTotalSales').innerText = tSale.toFixed(2); 
+            document.getElementById('repReceived').innerText = tRec.toFixed(2); 
+            document.getElementById('repDue').innerText = tDue.toFixed(2);
         }
 
         function showSection(id) { 
             exitSelectionMode(); closeAllOptions();
             document.querySelectorAll('.section').forEach(s=>s.classList.remove('active')); document.getElementById(id).classList.add('active'); 
-            if(['home','products','reports'].includes(id)) { document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active')); document.getElementById('nav-'+id).classList.add('active'); }
+            if(['home','products','reports'].includes(id)) { 
+                document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active')); 
+                document.getElementById('nav-'+id).classList.add('active'); 
+            }
             if(id === 'trashSec') renderTrash();
+            if(id === 'customersSec') renderCustomers();
         }
     </script>
 </body>
 </html>
+
 
 
 
