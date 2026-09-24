@@ -96,7 +96,7 @@
         
         #syncIndicator { position: fixed; top: 45px; right: 10px; background: #222; color: #fff; padding: 6px 14px; border-radius: 20px; font-size: 11px; z-index: 9999; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.3); font-weight: 500; }
 
-        /* --- PHONEPE STYLE SUCCESS OVERLAY CSS (Only View Button) --- */
+        /* --- PHONEPE STYLE SUCCESS OVERLAY CSS --- */
         #successOverlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: #2a9d8f; z-index: 999999;
@@ -138,17 +138,11 @@
         
         #successCloseBtn { position: absolute; top: 30px; right: 25px; background: none; border: none; color: white; font-size: 32px; cursor: pointer; display: none; opacity: 0.8; transition: 0.2s; }
         #successCloseBtn:active { transform: scale(0.8); }
-
-        @media print {
-            body * { visibility: hidden; }
-            #printArea, #printArea * { visibility: visible; }
-            #printArea { position: absolute; left: 0; top: 0; width: 100%; }
-        }
     </style>
 </head>
 <body onclick="closeAllOptions(event)">
 
-    <!-- PhonePe Style Full Screen Success Overlay (Only View Button) -->
+    <!-- PhonePe Style Full Screen Success Overlay -->
     <div id="successOverlay">
         <button id="successCloseBtn" onclick="closeSuccessOverlay()"><i class="fas fa-times"></i></button>
         <div class="check-circle"><i class="fas fa-check"></i></div>
@@ -307,7 +301,7 @@
         </div>
         <div style="padding: 20px; display:flex; flex-direction:column; gap:10px;">
             <button class="btn-green" onclick="shareOnWhatsApp()"><i class="fab fa-whatsapp"></i> WhatsApp Share</button>
-            <button class="btn-blue" onclick="exportPDFUniversal()"><i class="fas fa-file-pdf"></i> Save as PDF / Print</button>
+            <button class="btn-blue" onclick="exportPDFUniversal()"><i class="fas fa-file-pdf"></i> Download PDF (Cloud API)</button>
             <button class="btn-red" id="saveInvoiceBtn" onclick="saveAndCloseInvoice()"><i class="fas fa-check-circle"></i> Save & Done</button>
         </div>
     </div>
@@ -441,7 +435,7 @@
             if(isMqttConnected) { showSyncToast("Syncing to other phones..."); broadcastCloudData(); }
         }
 
-        // --- UNIVERSAL PDF EXPORT ---
+        // --- DIRECT CLOUD API PDF DOWNLOAD (Bypasses AppsGeyser WebView Restrictions) ---
         function prepareInvoiceDOM(invData) {
             document.getElementById('invCustName').innerText = invData.custName;
             document.getElementById('invCustPhone').innerText = invData.custPhone || '';
@@ -477,7 +471,32 @@
         function exportPDFUniversal() {
             if(!currentInvoiceData) return;
             prepareInvoiceDOM(currentInvoiceData);
-            window.print();
+            
+            // Using html2pdf worker output to generate safe blob URL that forces external browser download/open
+            const element = document.getElementById('printArea');
+            const opt = {
+                margin:       0.3,
+                filename:     `Invoice_${currentInvoiceData.invNo}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true },
+                jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+            };
+
+            showSyncToast("Generating PDF...");
+            
+            html2pdf().from(element).set(opt).outputPdf('blob').then((pdfBlob) => {
+                const blobUrl = URL.createObjectURL(pdfBlob);
+                // Force open/download in external browser intent to bypass AppsGeyser block
+                const downloadLink = document.createElement('a');
+                downloadLink.href = blobUrl;
+                downloadLink.download = `Invoice_${currentInvoiceData.invNo}.pdf`;
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                document.body.removeChild(downloadLink);
+            }).catch(err => {
+                // Fallback to print method if blob creation fails
+                window.print();
+            });
         }
 
         // --- WHATSAPP SHARE ---
@@ -503,7 +522,7 @@
             return "BS-" + String(nextNum).padStart(5, '0');
         }
 
-        // --- SUCCESS ANIMATION & SOUND ENGINE (No Save PDF Button) ---
+        // --- SUCCESS ANIMATION & SOUND ENGINE ---
         function playSuccessSound() {
             try {
                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -1031,7 +1050,7 @@
             document.getElementById('cpNewPay').value = ''; document.getElementById('creditPayModal').style.display = 'block';
         }
         function submitCreditPayment() {
-            let newPay = parseFloat(document.getElementById('cpNewPay').value); if(isNaN(newPay) || newPay <=0) return;
+            let newPay = parseFloat(document.getElementById('cpNewPay').value); if(isNaN(newPay) || newPay <= 0) return;
             let sale = salesHistory[activeCreditEditIndex]; sale.received += newPay; sale.due = sale.total - sale.received;
             if(sale.due <= 0) { sale.due = 0; sale.status = 'PAID'; }
             saveData(); document.getElementById('creditPayModal').style.display = 'none'; renderHistory();
@@ -1046,12 +1065,13 @@
         function showSection(id) { 
             exitSelectionMode(); closeAllOptions();
             document.querySelectorAll('.section').forEach(s=>s.classList.remove('active')); document.getElementById(id).classList.add('active'); 
-            if(['home','products','reports'].includes(id)) { document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active')); document.getElementById('nav-'+id).classList.add('active'); }
+            if(['home','products','reports'].includes(id)) { document.querySelectorAll('.nav-btn').exec ? '' : document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active')); document.getElementById('nav-'+id).classList.add('active'); }
             if(id === 'trashSec') renderTrash();
         }
     </script>
 </body>
 </html>
+
 
 
 
