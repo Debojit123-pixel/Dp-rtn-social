@@ -64,7 +64,7 @@
 
         .card-opts { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.95); display: flex; align-items: center; justify-content: space-evenly; opacity: 0; pointer-events: none; transition: opacity 0.2s ease; z-index: 10; backdrop-filter: blur(2px); }
         .card-opts.show { opacity: 1; pointer-events: auto; }
-        .opt-btn { width: 40px; height: 40px; border-radius: 50%; border: none; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.15); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .opt-btn { width: 42px; height: 42px; border-radius: 50%; border: none; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.15); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
         .opt-btn:active { transform: scale(0.9); }
 
         .selected-card { background: #fff5f5 !important; border-color: var(--primary-red) !important; transform: scale(0.98); }
@@ -96,7 +96,7 @@
         
         #syncIndicator { position: fixed; top: 45px; right: 10px; background: #222; color: #fff; padding: 6px 14px; border-radius: 20px; font-size: 11px; z-index: 9999; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.3); font-weight: 500; }
 
-        /* --- UPGRADED PHONEPE STYLE SUCCESS OVERLAY CSS --- */
+        /* --- PHONEPE STYLE SUCCESS OVERLAY CSS (Only View Button) --- */
         #successOverlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: #2a9d8f; z-index: 999999;
@@ -130,28 +130,31 @@
             100% { transform: translateY(0); opacity: 1; }
         }
         #successText { font-size: 24px; font-weight: 700; margin-bottom: 40px; opacity: 0; animation: slideUpFade 0.5s ease 0.2s forwards; }
-        #successActions { display: flex; gap: 15px; width: 100%; max-width: 350px; padding: 0 20px; opacity: 0; animation: slideUpFade 0.5s ease 0.3s forwards; }
+        #successActions { display: flex; justify-content: center; width: 100%; max-width: 250px; padding: 0 20px; opacity: 0; animation: slideUpFade 0.5s ease 0.3s forwards; }
         
-        .success-btn { flex: 1; padding: 14px; border-radius: 30px; font-weight: bold; font-size: 16px; cursor: pointer; border: 2px solid white; transition: 0.2s; }
-        .success-btn-outline { background: transparent; color: white; }
-        .success-btn-outline:active { background: rgba(255,255,255,0.2); }
+        .success-btn { width: 100%; padding: 14px; border-radius: 30px; font-weight: bold; font-size: 16px; cursor: pointer; border: 2px solid white; transition: 0.2s; }
         .success-btn-solid { background: white; color: #2a9d8f; }
         .success-btn-solid:active { transform: scale(0.95); }
         
         #successCloseBtn { position: absolute; top: 30px; right: 25px; background: none; border: none; color: white; font-size: 32px; cursor: pointer; display: none; opacity: 0.8; transition: 0.2s; }
         #successCloseBtn:active { transform: scale(0.8); }
+
+        @media print {
+            body * { visibility: hidden; }
+            #printArea, #printArea * { visibility: visible; }
+            #printArea { position: absolute; left: 0; top: 0; width: 100%; }
+        }
     </style>
 </head>
 <body onclick="closeAllOptions(event)">
 
-    <!-- Upgraded PhonePe Style Full Screen Success Overlay -->
+    <!-- PhonePe Style Full Screen Success Overlay (Only View Button) -->
     <div id="successOverlay">
         <button id="successCloseBtn" onclick="closeSuccessOverlay()"><i class="fas fa-times"></i></button>
         <div class="check-circle"><i class="fas fa-check"></i></div>
         <h2 id="successText">Success!</h2>
         <div id="successActions">
-            <button class="success-btn success-btn-outline" onclick="viewFromSuccess()">View</button>
-            <button class="success-btn success-btn-solid" onclick="downloadFromSuccess()">Share/Save PDF</button>
+            <button class="success-btn success-btn-solid" onclick="viewFromSuccess()">View Invoice</button>
         </div>
     </div>
 
@@ -278,7 +281,7 @@
     <!-- INVOICE MODAL -->
     <div id="invoiceModal">
         <div class="top-bar"><button onclick="closeInvoiceUI()"><i class="fas fa-arrow-left"></i> Back</button></div>
-        <div id="printArea">
+        <div id="printArea" style="background:#ffffff !important;">
             <div id="invWatermark" class="watermark">PAID</div>
             <div style="text-align: center; border-bottom: 2px solid #222; padding-bottom: 10px; margin-bottom:15px;">
                 <h1 style="font-size: 22px; text-transform: uppercase;">Bholanath Store</h1>
@@ -304,7 +307,7 @@
         </div>
         <div style="padding: 20px; display:flex; flex-direction:column; gap:10px;">
             <button class="btn-green" onclick="shareOnWhatsApp()"><i class="fab fa-whatsapp"></i> WhatsApp Share</button>
-            <button class="btn-blue" onclick="downloadPDF()"><i class="fas fa-file-pdf"></i> Share / Save PDF</button>
+            <button class="btn-blue" onclick="exportPDFUniversal()"><i class="fas fa-file-pdf"></i> Save as PDF / Print</button>
             <button class="btn-red" id="saveInvoiceBtn" onclick="saveAndCloseInvoice()"><i class="fas fa-check-circle"></i> Save & Done</button>
         </div>
     </div>
@@ -438,9 +441,8 @@
             if(isMqttConnected) { showSyncToast("Syncing to other phones..."); broadcastCloudData(); }
         }
 
-        // --- NATIVE SHARE / PDF DOWNLOAD FIX (Bypasses AppsGeyser Bug) ---
-        function exportPDF(invData) {
-            // Populate the print area
+        // --- UNIVERSAL PDF EXPORT ---
+        function prepareInvoiceDOM(invData) {
             document.getElementById('invCustName').innerText = invData.custName;
             document.getElementById('invCustPhone').innerText = invData.custPhone || '';
             document.getElementById('invDate').innerText = invData.date;
@@ -470,47 +472,21 @@
             } else { 
                 qrBox.style.display = 'none'; 
             }
-
-            // Temporarily show modal off-screen to allow html2pdf to capture it
-            document.getElementById('invoiceModal').style.visibility = 'hidden';
-            document.getElementById('invoiceModal').style.display = 'block';
-
-            const filename = `Inv_${invData.invNo}.pdf`;
-            const opt = { margin: 0.2, filename: filename, image: { type: 'jpeg', quality: 1 }, html2canvas: { scale: 2, scrollY: 0 } };
-            
-            html2pdf().set(opt).from(document.getElementById('printArea')).output('blob').then(function(blob) {
-                document.getElementById('invoiceModal').style.display = 'none';
-                document.getElementById('invoiceModal').style.visibility = 'visible';
-                
-                let file = new File([blob], filename, { type: 'application/pdf' });
-                
-                // Native Share System - Solves the AppsGeyser Download Permission Error completely
-                if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                    navigator.share({
-                        files: [file],
-                        title: filename,
-                        text: 'Invoice Document'
-                    }).catch(e => { triggerStandardDownload(blob, filename); });
-                } else {
-                    triggerStandardDownload(blob, filename);
-                }
-            }).catch(err => {
-                alert("Error generating PDF.");
-                document.getElementById('invoiceModal').style.display = 'none';
-                document.getElementById('invoiceModal').style.visibility = 'visible';
-            });
         }
 
-        function triggerStandardDownload(blob, filename) {
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
+        function exportPDFUniversal() {
+            if(!currentInvoiceData) return;
+            prepareInvoiceDOM(currentInvoiceData);
+            window.print();
+        }
+
+        // --- WHATSAPP SHARE ---
+        function shareOnWhatsApp() {
+            if(!currentInvoiceData) return;
+            let inv = currentInvoiceData;
+            let text = `*Bholanath Store*\nInv: ${inv.invNo}\nStatus: *${inv.status}*\nTotal: ₹${inv.total}\nDue: ₹${inv.due}\nCustomer: ${inv.custName}`;
+            const whatsappUrl = `whatsapp://send?phone=${inv.custPhone ? '91' + inv.custPhone : ''}&text=${encodeURIComponent(text)}`;
+            window.location.href = whatsappUrl;
         }
 
         // --- UNIQUE SEQUENTIAL INVOICE NUMBER GENERATOR ---
@@ -520,34 +496,28 @@
                 if (s.invNo && s.invNo.startsWith("BS-")) {
                     let numPart = s.invNo.replace("BS-", "");
                     let num = parseInt(numPart);
-                    if (!isNaN(num) && num > maxNum) {
-                        maxNum = num;
-                    }
+                    if (!isNaN(num) && num > maxNum) { maxNum = num; }
                 }
             });
-            let nextNum = maxNum > 0 ? maxNum + 1 : 1001; // Begins at BS-01001
+            let nextNum = maxNum > 0 ? maxNum + 1 : 1001;
             return "BS-" + String(nextNum).padStart(5, '0');
         }
 
-        // --- UPGRADED PREMIUM SUCCESS ANIMATION & MELODIC SOUND ENGINE ---
+        // --- SUCCESS ANIMATION & SOUND ENGINE ---
         function playSuccessSound() {
             try {
                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
                 function playNote(freq, type, startTime, duration, vol) {
                     const osc = ctx.createOscillator();
                     const gain = ctx.createGain();
-                    osc.connect(gain);
-                    gain.connect(ctx.destination);
-                    osc.type = type;
-                    osc.frequency.setValueAtTime(freq, startTime);
+                    osc.connect(gain); gain.connect(ctx.destination);
+                    osc.type = type; osc.frequency.setValueAtTime(freq, startTime);
                     gain.gain.setValueAtTime(0, startTime);
                     gain.gain.linearRampToValueAtTime(vol, startTime + 0.02);
                     gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-                    osc.start(startTime);
-                    osc.stop(startTime + duration);
+                    osc.start(startTime); osc.stop(startTime + duration);
                 }
                 const now = ctx.currentTime;
-                // Premium Two-Tone Melodic Chime (B5 followed by E6)
                 playNote(987.77, 'sine', now, 0.4, 0.6); 
                 playNote(1318.51, 'sine', now + 0.12, 0.6, 0.6); 
             } catch(e){}
@@ -556,14 +526,11 @@
         function showSuccessOverlay(msg, isSale) {
             document.getElementById('successText').innerText = msg;
             const overlay = document.getElementById('successOverlay');
-            const actions = document.getElementById('successActions');
             const closeBtn = document.getElementById('successCloseBtn');
             
             if(isSale) {
-                actions.style.display = 'flex';
                 closeBtn.style.display = 'block';
             } else {
-                actions.style.display = 'none';
                 closeBtn.style.display = 'none';
                 setTimeout(() => { closeSuccessOverlay(); }, 2000);
             }
@@ -579,26 +546,10 @@
             setTimeout(() => { overlay.style.display = 'none'; }, 300);
         }
 
-        // Single Tap Unified Functions
         function viewFromSuccess() {
             closeSuccessOverlay();
             generateInvoice(true, currentInvoiceData);
             document.getElementById('saveInvoiceBtn').style.display = 'none';
-        }
-
-        function downloadFromSuccess() {
-            exportPDF(currentInvoiceData);
-        }
-
-        function downloadPDF() {
-            exportPDF(currentInvoiceData);
-        }
-
-        function shareOnWhatsApp() {
-            if(!currentInvoiceData) return;
-            let inv = currentInvoiceData;
-            let text = `*Bholanath Store*\nInv: ${inv.invNo}\nStatus: *${inv.status}*\nTotal: ₹${inv.total}\nDue: ₹${inv.due}`;
-            window.location.href = `https://wa.me/${inv.custPhone ? `91${inv.custPhone}` : ''}?text=${encodeURIComponent(text)}`;
         }
 
         function stopProp(e) { if(e) { e.preventDefault(); e.stopPropagation(); } }
@@ -766,7 +717,7 @@
                     osc.stop(ctx.currentTime + 0.1); 
                 } catch(e){}
                 
-                const verifiedCode = candidateText.trim();
+                const verifiedCode = decodedText.trim();
                 closeScanner();
                 
                 if(activeScannerMode === 'product') {
@@ -984,20 +935,7 @@
                 upi: upi, date: new Date().toLocaleString(), invNo: invNumber,
                 items: [...cart], total, received: rec, due, status
             };
-            document.getElementById('invCustName').innerText = data.custName; document.getElementById('invCustPhone').innerText = data.custPhone;
-            document.getElementById('invDate').innerText = data.date; document.getElementById('invNo').innerText = data.invNo;
-            
-            let tbody = ''; data.items.forEach(p => { tbody += `<tr><td>${p.name}</td><td>${p.qty}</td><td>₹${p.cartPrice}</td><td>₹${p.qty * p.cartPrice}</td></tr>`; });
-            document.getElementById('invoiceTableBody').innerHTML = tbody;
-            document.getElementById('invTotal').innerText = data.total.toFixed(2); document.getElementById('invReceived').innerText = data.received.toFixed(2); document.getElementById('invDue').innerText = data.due.toFixed(2);
-            
-            const wm = document.getElementById('invWatermark'); wm.innerText = data.status; wm.className = `watermark ${data.status === 'PAID' ? 'wm-paid' : 'wm-credit'}`;
-            
-            const qrBox = document.getElementById('qrContainer');
-            if(data.upi) {
-                qrBox.style.display = 'block'; document.getElementById('qrcode').innerHTML = ""; 
-                new QRCode(document.getElementById("qrcode"), { text: `upi://pay?pa=${data.upi}&pn=BholanathStore&am=${data.total}&cu=INR`, width: 100, height: 100 });
-            } else { qrBox.style.display = 'none'; }
+            prepareInvoiceDOM(data);
 
             document.getElementById('saveInvoiceBtn').style.display = isHistory ? 'none' : 'block';
             currentInvoiceData = data; 
@@ -1048,11 +986,9 @@
                     </div>
                     
                     <div class="card-opts" id="opts-history-${realIndex}" onclick="stopProp(event)">
-                        <button class="opt-btn" style="color:#0077b6;" onclick="directEditInvoice(${realIndex}, event)"><i class="fas fa-edit"></i></button>
-                        <button class="opt-btn" style="color:#25D366;" onclick="shareOnWhatsApp(event)"><i class="fab fa-whatsapp"></i></button>
-                        <button class="opt-btn" style="color:var(--green-paid);" onclick="exportPDF(salesHistory[${realIndex}])"><i class="fas fa-download"></i></button>
-                        <button class="opt-btn" style="color:var(--primary-red);" onclick="startSelection('history', ${realIndex}, event)"><i class="fas fa-check-square"></i></button>
-                        <button class="opt-btn" style="color:#333;" onclick="closeOptionsFix(event)"><i class="fas fa-times"></i></button>
+                        <button class="opt-btn" style="color:#0077b6;" onclick="directEditInvoice(${realIndex}, event)" title="Edit"><i class="fas fa-edit"></i></button>
+                        <button class="opt-btn" style="color:var(--primary-red);" onclick="startSelection('history', ${realIndex}, event)" title="Select"><i class="fas fa-check-square"></i></button>
+                        <button class="opt-btn" style="color:#333;" onclick="closeOptionsFix(event)" title="Close"><i class="fas fa-times"></i></button>
                     </div>`;
                     
                 if(sale.status === 'CREDIT') { html += `<button onclick="stopProp(event); openCreditPay(${realIndex})" class="btn-green" style="width:auto; padding:8px; pointer-events:auto; z-index:9;"><i class="fas fa-rupee-sign"></i> Pay</button>`; }
@@ -1116,6 +1052,7 @@
     </script>
 </body>
 </html>
+
 
 
 
