@@ -34,13 +34,8 @@
         }
 
         #statusBarSpacer {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: var(--status-bar-height);
-            background: var(--primary-red);
-            z-index: 100000;
+            position: fixed; top: 0; left: 0; width: 100%;
+            height: var(--status-bar-height); background: var(--primary-red); z-index: 100000;
         }
 
         .navbar { background: #fff; display: flex; justify-content: space-around; padding: 8px 0; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); position: fixed; bottom: 0; width: 100%; z-index: 100; }
@@ -73,22 +68,7 @@
         .opt-btn:active { transform: scale(0.9); }
 
         .selected-card { background: #fff5f5 !important; border-color: var(--primary-red) !important; transform: scale(0.98); }
-        #selectionBar { 
-            position: fixed; 
-            top: var(--status-bar-height); 
-            left: 0; 
-            width: 100%; 
-            background: #d62828; 
-            color: white; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            padding: 12px 20px; 
-            z-index: 99999; 
-            transform: translateY(-100%); 
-            transition: transform 0.3s ease; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2); 
-        }
+        #selectionBar { position: fixed; top: var(--status-bar-height); left: 0; width: 100%; background: #d62828; color: white; display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; z-index: 99999; transform: translateY(-100%); transition: transform 0.3s ease; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
         #selectionBar.show { transform: translateY(0); }
         #selectionBar button { background: none; border: none; color: white; font-size: 18px; margin-left: 20px; cursor: pointer; }
 
@@ -115,9 +95,65 @@
         .suggestion-item { padding: 10px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 10px; cursor: pointer; }
         
         #syncIndicator { position: fixed; top: 45px; right: 10px; background: #222; color: #fff; padding: 6px 14px; border-radius: 20px; font-size: 11px; z-index: 9999; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.3); font-weight: 500; }
+
+        /* --- UPGRADED PHONEPE STYLE SUCCESS OVERLAY CSS --- */
+        #successOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #2a9d8f; z-index: 999999;
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            color: white; text-align: center;
+            opacity: 0; transition: opacity 0.3s ease;
+        }
+        .check-circle {
+            width: 100px; height: 100px; border-radius: 50%; background: white;
+            display: flex; align-items: center; justify-content: center; 
+            margin-bottom: 25px; 
+            box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.5);
+            animation: pulse-ring 1.5s infinite;
+        }
+        .check-circle i {
+            color: #2a9d8f; font-size: 50px;
+            transform: scale(0);
+            animation: popScale 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.1s forwards;
+        }
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.6); }
+            70% { box-shadow: 0 0 0 20px rgba(255, 255, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+        }
+        @keyframes popScale {
+            0% { transform: scale(0); }
+            100% { transform: scale(1); }
+        }
+        @keyframes slideUpFade {
+            0% { transform: translateY(20px); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+        #successText { font-size: 24px; font-weight: 700; margin-bottom: 40px; opacity: 0; animation: slideUpFade 0.5s ease 0.2s forwards; }
+        #successActions { display: flex; gap: 15px; width: 100%; max-width: 350px; padding: 0 20px; opacity: 0; animation: slideUpFade 0.5s ease 0.3s forwards; }
+        
+        .success-btn { flex: 1; padding: 14px; border-radius: 30px; font-weight: bold; font-size: 16px; cursor: pointer; border: 2px solid white; transition: 0.2s; }
+        .success-btn-outline { background: transparent; color: white; }
+        .success-btn-outline:active { background: rgba(255,255,255,0.2); }
+        .success-btn-solid { background: white; color: #2a9d8f; }
+        .success-btn-solid:active { transform: scale(0.95); }
+        
+        #successCloseBtn { position: absolute; top: 30px; right: 25px; background: none; border: none; color: white; font-size: 32px; cursor: pointer; display: none; opacity: 0.8; transition: 0.2s; }
+        #successCloseBtn:active { transform: scale(0.8); }
     </style>
 </head>
 <body onclick="closeAllOptions(event)">
+
+    <!-- Upgraded PhonePe Style Full Screen Success Overlay -->
+    <div id="successOverlay">
+        <button id="successCloseBtn" onclick="closeSuccessOverlay()"><i class="fas fa-times"></i></button>
+        <div class="check-circle"><i class="fas fa-check"></i></div>
+        <h2 id="successText">Success!</h2>
+        <div id="successActions">
+            <button class="success-btn success-btn-outline" onclick="viewFromSuccess()">View</button>
+            <button class="success-btn success-btn-solid" onclick="downloadFromSuccess()">Download</button>
+        </div>
+    </div>
 
     <div id="statusBarSpacer"></div>
 
@@ -126,7 +162,6 @@
         <div id="selectionActions"></div>
     </div>
 
-    <!-- Live Sync Alert Indicator -->
     <div id="syncIndicator"><i class="fas fa-sync fa-spin"></i> Connecting Cloud...</div>
 
     <!-- HOME SECTION -->
@@ -330,7 +365,6 @@
         let activeOptionsId = null; 
 
         // --- RELIABLE HTTPS SECURE MQTT SYNC ENGINE ---
-        // Using Port 8084 (SSL/TLS WebSocket) which is 100% compliant with HTTPS and GitHub Pages
         const mqttDataTopic = 'bholanath_store_pos_data_assam_2026';
         const mqttReqTopic  = 'bholanath_store_pos_req_assam_2026';
         const clientId = 'pos_' + Math.random().toString(16).substr(2, 8);
@@ -338,22 +372,14 @@
         let isMqttConnected = false;
         
         const mqttClient = mqtt.connect('wss://broker.emqx.io:8084/mqtt', { 
-            clientId: clientId, 
-            keepalive: 60,
-            reconnectPeriod: 3000,
-            clean: true
+            clientId: clientId, keepalive: 60, reconnectPeriod: 3000, clean: true
         });
 
         mqttClient.on('connect', () => { 
-            isMqttConnected = true; 
-            updateCloudStatusUI(true);
-            mqttClient.subscribe(mqttDataTopic);
-            mqttClient.subscribe(mqttReqTopic);
-
-            // Notify other phones or pull latest state immediately upon opening
+            isMqttConnected = true; updateCloudStatusUI(true);
+            mqttClient.subscribe(mqttDataTopic); mqttClient.subscribe(mqttReqTopic);
             mqttClient.publish(mqttReqTopic, JSON.stringify({ sender: clientId }));
         });
-
         mqttClient.on('reconnect', () => { updateCloudStatusUI(false, "Reconnecting..."); });
         mqttClient.on('close', () => { isMqttConnected = false; updateCloudStatusUI(false); });
         mqttClient.on('error', (err) => { isMqttConnected = false; updateCloudStatusUI(false); });
@@ -362,30 +388,17 @@
             try {
                 if (topic === mqttReqTopic) {
                     const req = JSON.parse(message.toString());
-                    if (req.sender !== clientId && (products.length > 0 || salesHistory.length > 0)) {
-                        broadcastCloudData();
-                    }
+                    if (req.sender !== clientId && (products.length > 0 || salesHistory.length > 0)) { broadcastCloudData(); }
                     return;
                 }
-
                 if (topic === mqttDataTopic) {
                     const data = JSON.parse(message.toString());
                     if (data.sender !== clientId && data.timestamp && data.timestamp > lastSyncTime) {
-                        products = data.products || []; 
-                        salesHistory = data.salesHistory || []; 
-                        trashHistory = data.trashHistory || [];
+                        products = data.products || []; salesHistory = data.salesHistory || []; trashHistory = data.trashHistory || [];
                         lastSyncTime = data.timestamp;
-
-                        localStorage.setItem('bs_products', JSON.stringify(products));
-                        localStorage.setItem('bs_sales', JSON.stringify(salesHistory));
-                        localStorage.setItem('bs_trash', JSON.stringify(trashHistory));
-                        localStorage.setItem('bs_last_sync', lastSyncTime);
-
-                        renderProducts(); 
-                        renderHistory(); 
-                        renderTrash(); 
-                        updateReports();
-                        
+                        localStorage.setItem('bs_products', JSON.stringify(products)); localStorage.setItem('bs_sales', JSON.stringify(salesHistory));
+                        localStorage.setItem('bs_trash', JSON.stringify(trashHistory)); localStorage.setItem('bs_last_sync', lastSyncTime);
+                        renderProducts(); renderHistory(); renderTrash(); updateReports();
                         showSyncToast("Data synced from other phone!");
                     }
                 }
@@ -393,67 +406,119 @@
         });
 
         function updateCloudStatusUI(connected, customMsg="") {
-            const statusEl = document.getElementById('cloudStatusText');
-            if(!statusEl) return;
+            const statusEl = document.getElementById('cloudStatusText'); if(!statusEl) return;
             if(connected) {
-                statusEl.style.color = "#2a9d8f";
-                statusEl.innerHTML = `<i class="fas fa-circle" style="font-size:8px;"></i> Cloud Live Sync: Connected`;
+                statusEl.style.color = "#2a9d8f"; statusEl.innerHTML = `<i class="fas fa-circle" style="font-size:8px;"></i> Cloud Live Sync: Connected`;
             } else {
-                statusEl.style.color = "#e63946";
-                statusEl.innerHTML = `<i class="fas fa-circle" style="font-size:8px;"></i> Cloud Status: ${customMsg || "Connecting..."}`;
+                statusEl.style.color = "#e63946"; statusEl.innerHTML = `<i class="fas fa-circle" style="font-size:8px;"></i> Cloud Status: ${customMsg || "Connecting..."}`;
             }
         }
-
         function broadcastCloudData() {
             if(!isMqttConnected) return;
-            const payload = JSON.stringify({ 
-                products, 
-                salesHistory, 
-                trashHistory, 
-                timestamp: lastSyncTime,
-                sender: clientId 
-            });
+            const payload = JSON.stringify({ products, salesHistory, trashHistory, timestamp: lastSyncTime, sender: clientId });
             mqttClient.publish(mqttDataTopic, payload, { retain: true, qos: 0 });
         }
-
         function forceSyncPull() {
             if(isMqttConnected) {
-                showSyncToast("Refreshing from Cloud...");
-                // Send out our current state first
-                broadcastCloudData();
-                // Then ask if any other online device has newer state
+                showSyncToast("Refreshing from Cloud..."); broadcastCloudData();
                 mqttClient.publish(mqttReqTopic, JSON.stringify({ sender: clientId }));
-            } else {
-                showSyncToast("Reconnecting to Cloud...");
-                mqttClient.reconnect();
-            }
+            } else { showSyncToast("Reconnecting to Cloud..."); mqttClient.reconnect(); }
         }
-
         function showSyncToast(msg) {
-            const ind = document.getElementById('syncIndicator');
-            ind.innerHTML = `<i class="fas fa-sync fa-spin"></i> ${msg}`;
-            ind.style.display = 'block';
-            setTimeout(() => { ind.style.display = 'none'; }, 2000);
+            const ind = document.getElementById('syncIndicator'); ind.innerHTML = `<i class="fas fa-sync fa-spin"></i> ${msg}`;
+            ind.style.display = 'block'; setTimeout(() => { ind.style.display = 'none'; }, 2000);
         }
 
-        window.onload = () => { 
-            renderProducts(); 
-            renderHistory(); 
-            updateReports(); 
-        }
+        window.onload = () => { renderProducts(); renderHistory(); updateReports(); }
 
         function saveData() {
-            localStorage.setItem('bs_products', JSON.stringify(products));
-            localStorage.setItem('bs_sales', JSON.stringify(salesHistory));
-            localStorage.setItem('bs_trash', JSON.stringify(trashHistory));
-            lastSyncTime = Date.now(); 
-            localStorage.setItem('bs_last_sync', lastSyncTime);
+            localStorage.setItem('bs_products', JSON.stringify(products)); localStorage.setItem('bs_sales', JSON.stringify(salesHistory));
+            localStorage.setItem('bs_trash', JSON.stringify(trashHistory)); lastSyncTime = Date.now(); localStorage.setItem('bs_last_sync', lastSyncTime);
             updateReports();
+            if(isMqttConnected) { showSyncToast("Syncing to other phones..."); broadcastCloudData(); }
+        }
 
-            if(isMqttConnected) {
-                showSyncToast("Syncing to other phones...");
-                broadcastCloudData();
+        // --- UPGRADED PREMIUM SUCCESS ANIMATION & MELODIC SOUND ENGINE ---
+        function playSuccessSound() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                function playNote(freq, type, startTime, duration, vol) {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, startTime);
+                    gain.gain.setValueAtTime(0, startTime);
+                    gain.gain.linearRampToValueAtTime(vol, startTime + 0.02);
+                    gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+                    osc.start(startTime);
+                    osc.stop(startTime + duration);
+                }
+                const now = ctx.currentTime;
+                // Premium Two-Tone Melodic Chime (B5 followed by E6)
+                playNote(987.77, 'sine', now, 0.4, 0.6); 
+                playNote(1318.51, 'sine', now + 0.12, 0.6, 0.6); 
+            } catch(e){}
+        }
+
+        function showSuccessOverlay(msg, isSale) {
+            document.getElementById('successText').innerText = msg;
+            const overlay = document.getElementById('successOverlay');
+            const actions = document.getElementById('successActions');
+            const closeBtn = document.getElementById('successCloseBtn');
+            
+            if(isSale) {
+                actions.style.display = 'flex';
+                closeBtn.style.display = 'block';
+            } else {
+                actions.style.display = 'none';
+                closeBtn.style.display = 'none';
+                setTimeout(() => { closeSuccessOverlay(); }, 2000);
             }
+            
+            overlay.style.display = 'flex';
+            // Trigger smooth fade in
+            setTimeout(() => { overlay.style.opacity = '1'; }, 10);
+            playSuccessSound();
+        }
+
+        function closeSuccessOverlay() {
+            const overlay = document.getElementById('successOverlay');
+            overlay.style.opacity = '0'; // Smooth fade out
+            setTimeout(() => { overlay.style.display = 'none'; }, 300);
+        }
+
+        function viewFromSuccess() {
+            closeSuccessOverlay();
+            generateInvoice(true, currentInvoiceData);
+            document.getElementById('saveInvoiceBtn').style.display = 'none';
+        }
+
+        function downloadFromSuccess() {
+            document.getElementById('invoiceModal').style.display = 'block';
+            document.getElementById('invoiceModal').style.visibility = 'hidden';
+            
+            html2pdf().set({margin:0.2, filename:`Inv_${currentInvoiceData.invNo}.pdf`, image:{type:'jpeg',quality:1}, html2canvas:{scale:2,scrollY:0}}).from(document.getElementById('printArea')).save().then(() => {
+                document.getElementById('invoiceModal').style.display = 'none'; 
+                document.getElementById('invoiceModal').style.visibility = 'visible';
+            });
+        }
+
+        // --- SINGLE TAP MODAL BUTTON FUNCTIONS ---
+        function shareOnWhatsApp() {
+            if(!currentInvoiceData) return;
+            let inv = currentInvoiceData;
+            let text = `*Bholanath Store*\nInv: ${inv.invNo}\nStatus: *${inv.status}*\nTotal: ₹${inv.total}\nDue: ₹${inv.due}`;
+            window.location.href = `https://wa.me/${inv.custPhone ? `91${inv.custPhone}` : ''}?text=${encodeURIComponent(text)}`;
+        }
+
+        function downloadPDF() {
+            if(!currentInvoiceData) return;
+            document.getElementById('invoiceModal').style.visibility = 'hidden';
+            html2pdf().set({margin:0.2, filename:`Inv_${currentInvoiceData.invNo}.pdf`, image:{type:'jpeg',quality:1}, html2canvas:{scale:2,scrollY:0}}).from(document.getElementById('printArea')).save().then(() => {
+                document.getElementById('invoiceModal').style.visibility = 'visible';
+            });
         }
 
         function stopProp(e) { if(e) { e.preventDefault(); e.stopPropagation(); } }
@@ -496,7 +561,10 @@
                 if (selectedIndexes.size === 0) exitSelectionMode();
                 else { updateSelectionBarUI(); if(type === 'history') renderHistory(); else if(type === 'trash') renderTrash(); else if(type === 'product') renderProducts(); }
             } else if (activeSelectMode === null) {
-                if(type === 'history') generateInvoice(true, salesHistory[index]);
+                if(type === 'history') {
+                    currentInvoiceData = salesHistory[index];
+                    generateInvoice(true, salesHistory[index]);
+                }
                 if(type === 'product') editP(index);
             }
         }
@@ -555,11 +623,8 @@
             if(!html5QrCode) {
                 html5QrCode = new Html5Qrcode("reader", {
                     formatsToSupport: [ 
-                        Html5QrcodeSupportedFormats.EAN_13,
-                        Html5QrcodeSupportedFormats.CODE_128,
-                        Html5QrcodeSupportedFormats.UPC_A,
-                        Html5QrcodeSupportedFormats.EAN_8,
-                        Html5QrcodeSupportedFormats.QR_CODE
+                        Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.CODE_128,
+                        Html5QrcodeSupportedFormats.UPC_A, Html5QrcodeSupportedFormats.EAN_8, Html5QrcodeSupportedFormats.QR_CODE
                     ],
                     verbose: false
                 });
@@ -645,7 +710,6 @@
             document.getElementById('customScannerModal').style.display = 'none';
         }
 
-        // --- NEW SALE & DIRECT ENTRY ---
         function openNewSale() {
             cart = []; activeEditInvoiceIndex = -1; 
             document.getElementById('sellTitle').innerText = "New Sale";
@@ -747,7 +811,11 @@
 
             const pData = { barcode, name, price, image: base64ImageString };
             if(editIndex > -1) products[editIndex] = pData; else products.push(pData);
-            saveData(); renderProducts(); showSection('products');
+            
+            saveData(); 
+            renderProducts(); 
+            showSection('products');
+            showSuccessOverlay("Product Added Successfully!", false);
         }
 
         function renderProducts() {
@@ -859,25 +927,25 @@
                 salesHistory[activeEditInvoiceIndex] = currentInvoiceData;
                 activeEditInvoiceIndex = -1;
             } else { salesHistory.push(currentInvoiceData); }
-            saveData(); closeInvoiceUI(); openNewSale(); showSection('home');
+            saveData(); 
+            
+            // Hide preview and nav directly to Home
+            document.getElementById('invoiceModal').style.display='none'; 
+            document.getElementById('bottomNav').style.display='flex';
+            showSection('home');
+            
+            // Show Success UI
+            showSuccessOverlay("Payment Successful!", true);
+
+            // Background Cart Reset (Doesn't open 'addSell' page visually)
+            cart = []; 
+            document.getElementById('custName').value = ''; 
+            document.getElementById('custPhone').value = ''; 
+            document.getElementById('receivedAmt').value = ''; 
+            document.getElementById('upiId').value = '';
+            updateCart();
         }
         function closeInvoiceUI() { document.getElementById('invoiceModal').style.display='none'; document.getElementById('bottomNav').style.display='flex'; }
-
-        function directDownloadPDF(index, e) {
-            stopProp(e); closeAllOptions();
-            generateInvoice(true, salesHistory[index]);
-            document.getElementById('invoiceModal').style.visibility = 'hidden';
-            html2pdf().set({margin:0.2, filename:`Inv_${salesHistory[index].invNo}.pdf`, image:{type:'jpeg',quality:1}, html2canvas:{scale:2,scrollY:0}}).from(document.getElementById('printArea')).save().then(() => {
-                document.getElementById('invoiceModal').style.display = 'none'; document.getElementById('invoiceModal').style.visibility = 'visible'; document.getElementById('bottomNav').style.display = 'flex';
-            });
-        }
-        
-        function directWhatsappShare(isTrash, index, e) {
-            stopProp(e); closeAllOptions();
-            let inv = isTrash ? trashHistory[index] : salesHistory[index];
-            let text = `*Bholanath Store*\nInv: ${inv.invNo}\nStatus: *${inv.status}*\nTotal: ₹${inv.total}\nDue: ₹${inv.due}`;
-            window.open(`https://wa.me/${inv.custPhone?`91${inv.custPhone}`:''}?text=${encodeURIComponent(text)}`);
-        }
 
         function switchTab(tab) { currentTab = tab; exitSelectionMode(); document.querySelectorAll('.tab').forEach(t => t.classList.remove('active')); document.getElementById('tab-' + tab).classList.add('active'); renderHistory(); }
 
@@ -954,6 +1022,7 @@
             let sale = salesHistory[activeCreditEditIndex]; sale.received += newPay; sale.due = sale.total - sale.received;
             if(sale.due <= 0) { sale.due = 0; sale.status = 'PAID'; }
             saveData(); document.getElementById('creditPayModal').style.display = 'none'; renderHistory();
+            showSuccessOverlay("Payment Received Successfully!", false);
         }
 
         function updateReports() {
@@ -970,6 +1039,7 @@
     </script>
 </body>
 </html>
+
 
 
 
