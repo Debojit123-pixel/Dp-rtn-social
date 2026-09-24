@@ -301,7 +301,7 @@
         </div>
         <div style="padding: 20px; display:flex; flex-direction:column; gap:10px;">
             <button class="btn-green" onclick="shareOnWhatsApp()"><i class="fab fa-whatsapp"></i> WhatsApp Share</button>
-            <button class="btn-blue" onclick="exportPDFUniversal()"><i class="fas fa-share-alt"></i> Share / Save to Google Drive</button>
+            <button class="btn-blue" onclick="downloadInvoicePDF()"><i class="fas fa-file-pdf"></i> Download PDF (Cloud Hack)</button>
             <button class="btn-red" id="saveInvoiceBtn" onclick="saveAndCloseInvoice()"><i class="fas fa-check-circle"></i> Save & Done</button>
         </div>
     </div>
@@ -435,7 +435,7 @@
             if(isMqttConnected) { showSyncToast("Syncing to other phones..."); broadcastCloudData(); }
         }
 
-        // --- NATIVE SHARE PDF SYSTEM (Directly opens Google Drive / Files / WhatsApp share options) ---
+        // --- CLAUDE'S HYBRID CLOUD HACK PDF EXPORT (AppsGeyser WebView Safe) ---
         function prepareInvoiceDOM(invData) {
             document.getElementById('invCustName').innerText = invData.custName;
             document.getElementById('invCustPhone').innerText = invData.custPhone || '';
@@ -468,39 +468,94 @@
             }
         }
 
-        function exportPDFUniversal() {
+        function toast(msg, ms) {
+            let t = document.getElementById('pdfToast');
+            if (!t) {
+                t = document.createElement('div');
+                t.id = 'pdfToast';
+                t.style.cssText = 'position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#222;color:#fff;' +
+                    'padding:10px 18px;border-radius:20px;font-size:13px;z-index:1000001;display:none;max-width:85%;text-align:center;';
+                document.body.appendChild(t);
+            }
+            t.textContent = msg;
+            t.style.display = 'block';
+            clearTimeout(t._h);
+            if (ms) t._h = setTimeout(function () { t.style.display = 'none'; }, ms);
+        }
+        function hideToast() { let t = document.getElementById('pdfToast'); if (t) t.style.display = 'none'; }
+
+        function showLinkSheet(link, name) {
+            let old = document.getElementById('pdfLinkSheet'); if (old) old.remove();
+            let wrap = document.createElement('div');
+            wrap.id = 'pdfLinkSheet';
+            wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000000;display:flex;align-items:flex-end;';
+            let wa = 'https://wa.me/?text=' + encodeURIComponent('Invoice from Bholanath Store: ' + link);
+            let btn = 'display:block;text-align:center;text-decoration:none;border:none;border-radius:8px;padding:12px;' +
+                'font-weight:600;font-size:14px;width:100%;margin-top:10px;color:#fff;cursor:pointer;';
+            wrap.innerHTML =
+                '<div style="background:#fff;width:100%;border-radius:16px 16px 0 0;padding:18px 16px 24px;">' +
+                '<div style="font-weight:700;font-size:16px;margin-bottom:4px;"><i class="fas fa-file-pdf" style="color:#e63946"></i> PDF Ready!</div>' +
+                '<div style="font-size:12px;color:#666;margin-bottom:10px;">' + name + '</div>' +
+                '<a href="' + link + '" target="_blank" rel="noopener" style="' + btn + 'background:#e63946;">Open / Download PDF</a>' +
+                '<a href="' + wa + '" target="_blank" rel="noopener" style="' + btn + 'background:#25D366;">Share on WhatsApp</a>' +
+                '<button id="pdfCopyBtn" style="' + btn + 'background:#0077b6;">Copy Link</button>' +
+                '<button id="pdfCloseBtn" style="' + btn + 'background:#6c757d;">Close</button></div>';
+            document.body.appendChild(wrap);
+            document.getElementById('pdfCopyBtn').onclick = function () {
+                if (navigator.clipboard) { navigator.clipboard.writeText(link); }
+                toast('Link copied to clipboard!', 1800);
+            };
+            document.getElementById('pdfCloseBtn').onclick = function () { wrap.remove(); };
+        }
+
+        window.downloadInvoicePDF = async function () {
             if(!currentInvoiceData) return;
             prepareInvoiceDOM(currentInvoiceData);
 
-            const element = document.getElementById('printArea');
-            const opt = {
-                margin:       0.3,
-                filename:     `Invoice_${currentInvoiceData.invNo}.pdf`,
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true },
-                jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
-            };
+            let el = document.getElementById('printArea');
+            let name = 'Invoice_' + currentInvoiceData.invNo + '.pdf';
+            toast('Generating PDF...');
 
-            showSyncToast("Preparing PDF for Drive/Share...");
+            try {
+                let blob = await html2pdf().set({
+                    margin: 8,
+                    image: { type: 'jpeg', quality: 0.95 },
+                    html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                }).from(el).outputPdf('blob');
 
-            html2pdf().from(element).set(opt).outputPdf('blob').then((pdfBlob) => {
-                const filename = `Invoice_${currentInvoiceData.invNo}.pdf`;
-                const file = new File([pdfBlob], filename, { type: 'application/pdf' });
+                let ua = navigator.userAgent || '';
+                let isWebView = /Android/i.test(ua) && /;\s*wv\)|Version\/\d+\.\d+/i.test(ua);
 
-                // Direct Native Share Intent - Lets you select Google Drive (Save to Drive) immediately!
-                if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                    navigator.share({
-                        files: [file],
-                        title: filename,
-                        text: 'Bholanath Store Invoice PDF'
-                    }).catch(e => { window.print(); });
-                } else {
-                    window.print();
+                if (!isWebView) {
+                    let url = URL.createObjectURL(blob);
+                    let a = document.createElement('a');
+                    a.href = url; a.download = name;
+                    document.body.appendChild(a); a.click();
+                    setTimeout(function () { a.remove(); URL.revokeObjectURL(url); }, 4000);
+                    toast('PDF Downloaded', 2000);
+                    return;
                 }
-            }).catch(err => {
-                window.print();
-            });
-        }
+
+                toast('Uploading to Cloud Bridge...');
+                let fd = new FormData();
+                fd.append('file', blob, name);
+                
+                let res = await fetch('https://tmpfiles.org/api/v1/upload', { method: 'POST', body: fd });
+                let json = await res.json();
+                let dlUrl = json && json.data && json.data.url;
+
+                if (!dlUrl) throw new Error('Upload failed');
+                dlUrl = dlUrl.replace('http://', 'https://').replace('tmpfiles.org/', 'tmpfiles.org/dl/');
+                
+                hideToast();
+                showLinkSheet(dlUrl, name);
+
+            } catch (err) {
+                console.error(err);
+                toast('Failed. Please check internet connection.', 4000);
+            }
+        };
 
         // --- WHATSAPP SHARE ---
         function shareOnWhatsApp() {
@@ -1061,7 +1116,7 @@
         }
 
         function updateReports() {
-            let tSale=0, tRec=0, tDue=0; salesHistory.salesHistory ? salesHistory.forEach(s => { tSale+=s.total; tRec+=s.received; tDue+=s.due; }) : salesHistory.forEach(s => { tSale+=s.total; tRec+=s.received; tDue+=s.due; });
+            let tSale=0, tRec=0, tDue=0; salesHistory.forEach(s => { tSale+=s.total; tRec+=s.received; tDue+=s.due; });
             document.getElementById('repTotalSales').innerText = tSale.toFixed(2); document.getElementById('repReceived').innerText = tRec.toFixed(2); document.getElementById('repDue').innerText = tDue.toFixed(2);
         }
 
@@ -1074,6 +1129,7 @@
     </script>
 </body>
 </html>
+
 
 
 
