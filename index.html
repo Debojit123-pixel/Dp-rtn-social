@@ -114,7 +114,7 @@
         .suggestions-box { position: absolute; width: 100%; background: #fff; border: 1px solid #ddd; border-radius: 8px; max-height: 200px; overflow-y: auto; z-index: 1000; display: none; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         .suggestion-item { padding: 10px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 10px; cursor: pointer; }
         
-        #syncIndicator { position: fixed; top: 45px; right: 10px; background: #333; color: #fff; padding: 5px 12px; border-radius: 20px; font-size: 11px; z-index: 9999; display: none; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
+        #syncIndicator { position: fixed; top: 45px; right: 10px; background: #222; color: #fff; padding: 6px 14px; border-radius: 20px; font-size: 11px; z-index: 9999; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.3); font-weight: 500; }
     </style>
 </head>
 <body onclick="closeAllOptions(event)">
@@ -127,7 +127,7 @@
     </div>
 
     <!-- Live Sync Alert Indicator -->
-    <div id="syncIndicator"><i class="fas fa-sync fa-spin"></i> Syncing Data...</div>
+    <div id="syncIndicator"><i class="fas fa-sync fa-spin"></i> Connecting Cloud...</div>
 
     <!-- HOME SECTION -->
     <div id="home" class="section active">
@@ -226,7 +226,7 @@
             <button class="btn-blue" style="flex:1;" onclick="forceSyncPull()"><i class="fas fa-sync"></i> Refresh Data</button>
             <button class="btn-gray" style="flex:1;" onclick="showSection('trashSec')"><i class="fas fa-trash-alt"></i> View Trash Bin</button>
         </div>
-        <p style="font-size:11px; color:gray; margin-top:20px; text-align:center;">Cloud Synchronization via MQTT is Active.</p>
+        <p id="cloudStatusText" style="font-size:12px; color:#2a9d8f; margin-top:15px; text-align:center; font-weight:600;"><i class="fas fa-circle" style="font-size:8px;"></i> Checking Cloud Connection...</p>
     </div>
 
     <!-- TRASH BIN SECTION -->
@@ -329,27 +329,37 @@
         let isPressing = false;
         let activeOptionsId = null; 
 
-        // --- RELIABLE REAL-TIME MQTT SYNC ENGINE ---
-        const mqttDataTopic = 'bholanath_store_debojit_pos_data_2026';
-        const mqttReqTopic  = 'bholanath_store_debojit_pos_req_2026';
+        // --- RELIABLE HTTPS SECURE MQTT SYNC ENGINE ---
+        // Using Port 8084 (SSL/TLS WebSocket) which is 100% compliant with HTTPS and GitHub Pages
+        const mqttDataTopic = 'bholanath_store_pos_data_assam_2026';
+        const mqttReqTopic  = 'bholanath_store_pos_req_assam_2026';
         const clientId = 'pos_' + Math.random().toString(16).substr(2, 8);
         let lastSyncTime = parseInt(localStorage.getItem('bs_last_sync')) || 0;
         let isMqttConnected = false;
         
-        const mqttClient = mqtt.connect('wss://broker.hivemq.com:8000/mqtt', { clientId: clientId, keepalive: 60 });
+        const mqttClient = mqtt.connect('wss://broker.emqx.io:8084/mqtt', { 
+            clientId: clientId, 
+            keepalive: 60,
+            reconnectPeriod: 3000,
+            clean: true
+        });
 
         mqttClient.on('connect', () => { 
             isMqttConnected = true; 
+            updateCloudStatusUI(true);
             mqttClient.subscribe(mqttDataTopic);
             mqttClient.subscribe(mqttReqTopic);
 
-            // New Device: Ask existing devices for the latest data immediately
+            // Notify other phones or pull latest state immediately upon opening
             mqttClient.publish(mqttReqTopic, JSON.stringify({ sender: clientId }));
         });
 
+        mqttClient.on('reconnect', () => { updateCloudStatusUI(false, "Reconnecting..."); });
+        mqttClient.on('close', () => { isMqttConnected = false; updateCloudStatusUI(false); });
+        mqttClient.on('error', (err) => { isMqttConnected = false; updateCloudStatusUI(false); });
+
         mqttClient.on('message', (topic, message) => {
             try {
-                // If another phone opened the app and requested data, send the full dataset if we have data
                 if (topic === mqttReqTopic) {
                     const req = JSON.parse(message.toString());
                     if (req.sender !== clientId && (products.length > 0 || salesHistory.length > 0)) {
@@ -358,7 +368,6 @@
                     return;
                 }
 
-                // If receiving updated data from cloud
                 if (topic === mqttDataTopic) {
                     const data = JSON.parse(message.toString());
                     if (data.sender !== clientId && data.timestamp && data.timestamp > lastSyncTime) {
@@ -377,11 +386,23 @@
                         renderTrash(); 
                         updateReports();
                         
-                        showSyncToast("Data updated from another device!");
+                        showSyncToast("Data synced from other phone!");
                     }
                 }
             } catch(e) {}
         });
+
+        function updateCloudStatusUI(connected, customMsg="") {
+            const statusEl = document.getElementById('cloudStatusText');
+            if(!statusEl) return;
+            if(connected) {
+                statusEl.style.color = "#2a9d8f";
+                statusEl.innerHTML = `<i class="fas fa-circle" style="font-size:8px;"></i> Cloud Live Sync: Connected`;
+            } else {
+                statusEl.style.color = "#e63946";
+                statusEl.innerHTML = `<i class="fas fa-circle" style="font-size:8px;"></i> Cloud Status: ${customMsg || "Connecting..."}`;
+            }
+        }
 
         function broadcastCloudData() {
             if(!isMqttConnected) return;
@@ -392,15 +413,19 @@
                 timestamp: lastSyncTime,
                 sender: clientId 
             });
-            mqttClient.publish(mqttDataTopic, payload, { retain: true, qos: 1 });
+            mqttClient.publish(mqttDataTopic, payload, { retain: true, qos: 0 });
         }
 
         function forceSyncPull() {
             if(isMqttConnected) {
-                showSyncToast("Requesting data from cloud...");
+                showSyncToast("Refreshing from Cloud...");
+                // Send out our current state first
+                broadcastCloudData();
+                // Then ask if any other online device has newer state
                 mqttClient.publish(mqttReqTopic, JSON.stringify({ sender: clientId }));
             } else {
-                alert("Internet not connected to sync broker.");
+                showSyncToast("Reconnecting to Cloud...");
+                mqttClient.reconnect();
             }
         }
 
@@ -678,7 +703,7 @@
             const file = e.target.files[0]; if(!file) return; const reader = new FileReader();
             reader.onload = function(event) {
                 const img = new Image(); img.onload = function() {
-                    const canvas = document.createElement('canvas'); const size = 120; // 120px to keep payload light for MQTT
+                    const canvas = document.createElement('canvas'); const size = 120;
                     canvas.width = size; canvas.height = size; const minRatio = Math.min(img.width, img.height);
                     canvas.getContext('2d').drawImage(img, (img.width - minRatio) / 2, (img.height - minRatio) / 2, minRatio, minRatio, 0, 0, size, size);
                     base64ImageString = canvas.toDataURL('image/jpeg', 0.5); 
@@ -945,6 +970,7 @@
     </script>
 </body>
 </html>
+
 
 
 
