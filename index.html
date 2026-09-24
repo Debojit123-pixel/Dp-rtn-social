@@ -301,7 +301,7 @@
         </div>
         <div style="padding: 20px; display:flex; flex-direction:column; gap:10px;">
             <button class="btn-green" onclick="shareOnWhatsApp()"><i class="fab fa-whatsapp"></i> WhatsApp Share</button>
-            <button class="btn-blue" onclick="exportPDFUniversal()"><i class="fas fa-file-pdf"></i> Download PDF (Cloud API)</button>
+            <button class="btn-blue" onclick="exportPDFUniversal()"><i class="fas fa-share-alt"></i> Share / Save to Google Drive</button>
             <button class="btn-red" id="saveInvoiceBtn" onclick="saveAndCloseInvoice()"><i class="fas fa-check-circle"></i> Save & Done</button>
         </div>
     </div>
@@ -435,7 +435,7 @@
             if(isMqttConnected) { showSyncToast("Syncing to other phones..."); broadcastCloudData(); }
         }
 
-        // --- DIRECT CLOUD API PDF DOWNLOAD (Bypasses AppsGeyser WebView Restrictions) ---
+        // --- NATIVE SHARE PDF SYSTEM (Directly opens Google Drive / Files / WhatsApp share options) ---
         function prepareInvoiceDOM(invData) {
             document.getElementById('invCustName').innerText = invData.custName;
             document.getElementById('invCustPhone').innerText = invData.custPhone || '';
@@ -471,8 +471,7 @@
         function exportPDFUniversal() {
             if(!currentInvoiceData) return;
             prepareInvoiceDOM(currentInvoiceData);
-            
-            // Using html2pdf worker output to generate safe blob URL that forces external browser download/open
+
             const element = document.getElementById('printArea');
             const opt = {
                 margin:       0.3,
@@ -482,19 +481,23 @@
                 jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
             };
 
-            showSyncToast("Generating PDF...");
-            
+            showSyncToast("Preparing PDF for Drive/Share...");
+
             html2pdf().from(element).set(opt).outputPdf('blob').then((pdfBlob) => {
-                const blobUrl = URL.createObjectURL(pdfBlob);
-                // Force open/download in external browser intent to bypass AppsGeyser block
-                const downloadLink = document.createElement('a');
-                downloadLink.href = blobUrl;
-                downloadLink.download = `Invoice_${currentInvoiceData.invNo}.pdf`;
-                document.body.appendChild(downloadLink);
-                downloadLink.click();
-                document.body.removeChild(downloadLink);
+                const filename = `Invoice_${currentInvoiceData.invNo}.pdf`;
+                const file = new File([pdfBlob], filename, { type: 'application/pdf' });
+
+                // Direct Native Share Intent - Lets you select Google Drive (Save to Drive) immediately!
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    navigator.share({
+                        files: [file],
+                        title: filename,
+                        text: 'Bholanath Store Invoice PDF'
+                    }).catch(e => { window.print(); });
+                } else {
+                    window.print();
+                }
             }).catch(err => {
-                // Fallback to print method if blob creation fails
                 window.print();
             });
         }
@@ -1058,19 +1061,20 @@
         }
 
         function updateReports() {
-            let tSale=0, tRec=0, tDue=0; salesHistory.forEach(s => { tSale+=s.total; tRec+=s.received; tDue+=s.due; });
+            let tSale=0, tRec=0, tDue=0; salesHistory.salesHistory ? salesHistory.forEach(s => { tSale+=s.total; tRec+=s.received; tDue+=s.due; }) : salesHistory.forEach(s => { tSale+=s.total; tRec+=s.received; tDue+=s.due; });
             document.getElementById('repTotalSales').innerText = tSale.toFixed(2); document.getElementById('repReceived').innerText = tRec.toFixed(2); document.getElementById('repDue').innerText = tDue.toFixed(2);
         }
 
         function showSection(id) { 
             exitSelectionMode(); closeAllOptions();
             document.querySelectorAll('.section').forEach(s=>s.classList.remove('active')); document.getElementById(id).classList.add('active'); 
-            if(['home','products','reports'].includes(id)) { document.querySelectorAll('.nav-btn').exec ? '' : document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active')); document.getElementById('nav-'+id).classList.add('active'); }
+            if(['home','products','reports'].includes(id)) { document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active')); document.getElementById('nav-'+id).classList.add('active'); }
             if(id === 'trashSec') renderTrash();
         }
     </script>
 </body>
 </html>
+
 
 
 
