@@ -151,7 +151,7 @@
         <h2 id="successText">Success!</h2>
         <div id="successActions">
             <button class="success-btn success-btn-outline" onclick="viewFromSuccess()">View</button>
-            <button class="success-btn success-btn-solid" onclick="downloadFromSuccess()">Download</button>
+            <button class="success-btn success-btn-solid" onclick="downloadFromSuccess()">Share/Save PDF</button>
         </div>
     </div>
 
@@ -304,7 +304,7 @@
         </div>
         <div style="padding: 20px; display:flex; flex-direction:column; gap:10px;">
             <button class="btn-green" onclick="shareOnWhatsApp()"><i class="fab fa-whatsapp"></i> WhatsApp Share</button>
-            <button class="btn-blue" onclick="downloadPDF()"><i class="fas fa-file-pdf"></i> Download PDF</button>
+            <button class="btn-blue" onclick="downloadPDF()"><i class="fas fa-file-pdf"></i> Share / Save PDF</button>
             <button class="btn-red" id="saveInvoiceBtn" onclick="saveAndCloseInvoice()"><i class="fas fa-check-circle"></i> Save & Done</button>
         </div>
     </div>
@@ -438,6 +438,97 @@
             if(isMqttConnected) { showSyncToast("Syncing to other phones..."); broadcastCloudData(); }
         }
 
+        // --- NATIVE SHARE / PDF DOWNLOAD FIX (Bypasses AppsGeyser Bug) ---
+        function exportPDF(invData) {
+            // Populate the print area
+            document.getElementById('invCustName').innerText = invData.custName;
+            document.getElementById('invCustPhone').innerText = invData.custPhone || '';
+            document.getElementById('invDate').innerText = invData.date;
+            document.getElementById('invNo').innerText = invData.invNo;
+            
+            let tbody = '';
+            invData.items.forEach(p => { 
+                tbody += `<tr><td>${p.name}</td><td>${p.qty}</td><td>₹${p.cartPrice}</td><td>₹${p.qty * p.cartPrice}</td></tr>`; 
+            });
+            document.getElementById('invoiceTableBody').innerHTML = tbody;
+            document.getElementById('invTotal').innerText = invData.total.toFixed(2);
+            document.getElementById('invReceived').innerText = invData.received.toFixed(2);
+            document.getElementById('invDue').innerText = invData.due.toFixed(2);
+            
+            const wm = document.getElementById('invWatermark');
+            wm.innerText = invData.status;
+            wm.className = `watermark ${invData.status === 'PAID' ? 'wm-paid' : 'wm-credit'}`;
+            
+            const qrBox = document.getElementById('qrContainer');
+            if(invData.upi) {
+                qrBox.style.display = 'block'; 
+                document.getElementById('qrcode').innerHTML = ""; 
+                new QRCode(document.getElementById("qrcode"), { 
+                    text: `upi://pay?pa=${invData.upi}&pn=BholanathStore&am=${invData.total}&cu=INR`, 
+                    width: 100, height: 100 
+                });
+            } else { 
+                qrBox.style.display = 'none'; 
+            }
+
+            // Temporarily show modal off-screen to allow html2pdf to capture it
+            document.getElementById('invoiceModal').style.visibility = 'hidden';
+            document.getElementById('invoiceModal').style.display = 'block';
+
+            const filename = `Inv_${invData.invNo}.pdf`;
+            const opt = { margin: 0.2, filename: filename, image: { type: 'jpeg', quality: 1 }, html2canvas: { scale: 2, scrollY: 0 } };
+            
+            html2pdf().set(opt).from(document.getElementById('printArea')).output('blob').then(function(blob) {
+                document.getElementById('invoiceModal').style.display = 'none';
+                document.getElementById('invoiceModal').style.visibility = 'visible';
+                
+                let file = new File([blob], filename, { type: 'application/pdf' });
+                
+                // Native Share System - Solves the AppsGeyser Download Permission Error completely
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    navigator.share({
+                        files: [file],
+                        title: filename,
+                        text: 'Invoice Document'
+                    }).catch(e => { triggerStandardDownload(blob, filename); });
+                } else {
+                    triggerStandardDownload(blob, filename);
+                }
+            }).catch(err => {
+                alert("Error generating PDF.");
+                document.getElementById('invoiceModal').style.display = 'none';
+                document.getElementById('invoiceModal').style.visibility = 'visible';
+            });
+        }
+
+        function triggerStandardDownload(blob, filename) {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        }
+
+        // --- UNIQUE SEQUENTIAL INVOICE NUMBER GENERATOR ---
+        function getNextInvoiceNo() {
+            let maxNum = 0;
+            salesHistory.forEach(s => {
+                if (s.invNo && s.invNo.startsWith("BS-")) {
+                    let numPart = s.invNo.replace("BS-", "");
+                    let num = parseInt(numPart);
+                    if (!isNaN(num) && num > maxNum) {
+                        maxNum = num;
+                    }
+                }
+            });
+            let nextNum = maxNum > 0 ? maxNum + 1 : 1001; // Begins at BS-01001
+            return "BS-" + String(nextNum).padStart(5, '0');
+        }
+
         // --- UPGRADED PREMIUM SUCCESS ANIMATION & MELODIC SOUND ENGINE ---
         function playSuccessSound() {
             try {
@@ -478,17 +569,17 @@
             }
             
             overlay.style.display = 'flex';
-            // Trigger smooth fade in
             setTimeout(() => { overlay.style.opacity = '1'; }, 10);
             playSuccessSound();
         }
 
         function closeSuccessOverlay() {
             const overlay = document.getElementById('successOverlay');
-            overlay.style.opacity = '0'; // Smooth fade out
+            overlay.style.opacity = '0'; 
             setTimeout(() => { overlay.style.display = 'none'; }, 300);
         }
 
+        // Single Tap Unified Functions
         function viewFromSuccess() {
             closeSuccessOverlay();
             generateInvoice(true, currentInvoiceData);
@@ -496,29 +587,18 @@
         }
 
         function downloadFromSuccess() {
-            document.getElementById('invoiceModal').style.display = 'block';
-            document.getElementById('invoiceModal').style.visibility = 'hidden';
-            
-            html2pdf().set({margin:0.2, filename:`Inv_${currentInvoiceData.invNo}.pdf`, image:{type:'jpeg',quality:1}, html2canvas:{scale:2,scrollY:0}}).from(document.getElementById('printArea')).save().then(() => {
-                document.getElementById('invoiceModal').style.display = 'none'; 
-                document.getElementById('invoiceModal').style.visibility = 'visible';
-            });
+            exportPDF(currentInvoiceData);
         }
 
-        // --- SINGLE TAP MODAL BUTTON FUNCTIONS ---
+        function downloadPDF() {
+            exportPDF(currentInvoiceData);
+        }
+
         function shareOnWhatsApp() {
             if(!currentInvoiceData) return;
             let inv = currentInvoiceData;
             let text = `*Bholanath Store*\nInv: ${inv.invNo}\nStatus: *${inv.status}*\nTotal: ₹${inv.total}\nDue: ₹${inv.due}`;
             window.location.href = `https://wa.me/${inv.custPhone ? `91${inv.custPhone}` : ''}?text=${encodeURIComponent(text)}`;
-        }
-
-        function downloadPDF() {
-            if(!currentInvoiceData) return;
-            document.getElementById('invoiceModal').style.visibility = 'hidden';
-            html2pdf().set({margin:0.2, filename:`Inv_${currentInvoiceData.invNo}.pdf`, image:{type:'jpeg',quality:1}, html2canvas:{scale:2,scrollY:0}}).from(document.getElementById('printArea')).save().then(() => {
-                document.getElementById('invoiceModal').style.visibility = 'visible';
-            });
         }
 
         function stopProp(e) { if(e) { e.preventDefault(); e.stopPropagation(); } }
@@ -897,9 +977,11 @@
             let total = isHistory ? hData.total : totalAmount;
             let due = total - rec; due = due > 0 ? due : 0; let status = due > 0 ? 'CREDIT' : 'PAID';
 
+            const invNumber = isHistory ? hData.invNo : getNextInvoiceNo();
+
             const data = isHistory ? hData : {
                 custName: document.getElementById('custName').value || "Walk-in Customer", custPhone: document.getElementById('custPhone').value,
-                upi: upi, date: new Date().toLocaleString(), invNo: "BS-" + Math.floor(Math.random() * 99999),
+                upi: upi, date: new Date().toLocaleString(), invNo: invNumber,
                 items: [...cart], total, received: rec, due, status
             };
             document.getElementById('invCustName').innerText = data.custName; document.getElementById('invCustPhone').innerText = data.custPhone;
@@ -929,20 +1011,15 @@
             } else { salesHistory.push(currentInvoiceData); }
             saveData(); 
             
-            // Hide preview and nav directly to Home
             document.getElementById('invoiceModal').style.display='none'; 
             document.getElementById('bottomNav').style.display='flex';
             showSection('home');
             
-            // Show Success UI
             showSuccessOverlay("Payment Successful!", true);
 
-            // Background Cart Reset (Doesn't open 'addSell' page visually)
             cart = []; 
-            document.getElementById('custName').value = ''; 
-            document.getElementById('custPhone').value = ''; 
-            document.getElementById('receivedAmt').value = ''; 
-            document.getElementById('upiId').value = '';
+            document.getElementById('custName').value = ''; document.getElementById('custPhone').value = ''; 
+            document.getElementById('receivedAmt').value = ''; document.getElementById('upiId').value = '';
             updateCart();
         }
         function closeInvoiceUI() { document.getElementById('invoiceModal').style.display='none'; document.getElementById('bottomNav').style.display='flex'; }
@@ -972,8 +1049,8 @@
                     
                     <div class="card-opts" id="opts-history-${realIndex}" onclick="stopProp(event)">
                         <button class="opt-btn" style="color:#0077b6;" onclick="directEditInvoice(${realIndex}, event)"><i class="fas fa-edit"></i></button>
-                        <button class="opt-btn" style="color:#25D366;" onclick="directWhatsappShare(false, ${realIndex}, event)"><i class="fab fa-whatsapp"></i></button>
-                        <button class="opt-btn" style="color:var(--green-paid);" onclick="directDownloadPDF(${realIndex}, event)"><i class="fas fa-download"></i></button>
+                        <button class="opt-btn" style="color:#25D366;" onclick="shareOnWhatsApp(event)"><i class="fab fa-whatsapp"></i></button>
+                        <button class="opt-btn" style="color:var(--green-paid);" onclick="exportPDF(salesHistory[${realIndex}])"><i class="fas fa-download"></i></button>
                         <button class="opt-btn" style="color:var(--primary-red);" onclick="startSelection('history', ${realIndex}, event)"><i class="fas fa-check-square"></i></button>
                         <button class="opt-btn" style="color:#333;" onclick="closeOptionsFix(event)"><i class="fas fa-times"></i></button>
                     </div>`;
@@ -1039,6 +1116,7 @@
     </script>
 </body>
 </html>
+
 
 
 
