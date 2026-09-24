@@ -289,9 +289,38 @@
             <h2>Customer List</h2>
             <button class="btn-red" style="width: auto; padding: 6px 12px; background:#333;" onclick="showSection('reports')">Back</button>
         </div>
-        <p style="font-size:11px; color:gray; margin-bottom:10px;">View all registered customers and their pending credits.</p>
+        <button class="btn-red" style="margin-bottom: 15px;" onclick="openAddCustomerModal()"><i class="fas fa-user-plus"></i> Add New Customer</button>
+        <p style="font-size:11px; color:gray; margin-bottom:10px;">Sorted by latest transaction. Long press to Edit/Delete.</p>
         <input type="text" id="searchCustomer" placeholder="Search by Name or Phone..." oninput="renderCustomers()">
         <div id="customerList"></div>
+    </div>
+
+    <!-- ADD/EDIT CUSTOMER MODAL -->
+    <div id="addCustomerModal" class="section">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h2 id="customerModalTitle">Add Customer</h2>
+            <button class="btn-red" style="width: auto; background:#333; padding: 6px 12px;" onclick="showSection('customersSec')">Back</button>
+        </div>
+        <input type="hidden" id="editCustIndex" value="-1">
+        <input type="text" id="cNameInput" placeholder="Customer Name">
+        <input type="tel" id="cPhoneInput" placeholder="Phone Number (Optional)">
+        <button class="btn-red" style="margin-top:10px;" onclick="saveCustomer()">Save Customer</button>
+    </div>
+
+    <!-- CUSTOMER DETAILS SECTION -->
+    <div id="customerDetailsSec" class="section">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h2>Customer Profile</h2>
+            <button class="btn-red" style="width: auto; background:#333; padding: 6px 12px;" onclick="showSection('customersSec')">Back</button>
+        </div>
+        <div class="card" style="display:block; border-left:4px solid #0077b6; pointer-events:none; margin-bottom: 15px;">
+            <h3 id="cdName" style="margin-bottom:5px;"></h3>
+            <p style="font-size:12px; color:gray; margin-bottom:10px;">Phone: <span id="cdPhone"></span></p>
+            <p style="font-size:14px; font-weight:600;">Total Sales Amount: <span style="color:var(--green-paid);">₹<span id="cdTotalSales">0.00</span></span></p>
+        </div>
+        <h3>Invoice History</h3>
+        <p style="font-size:11px; color:gray; margin-bottom:10px;">Showing newest to oldest sales for this customer.</p>
+        <div id="cdHistoryList"></div>
     </div>
 
     <!-- TRASH BIN SECTION -->
@@ -354,7 +383,6 @@
 
     <!-- IN-APP CAMERA MODAL (FOR TAKING 3:4 PHOTOS) -->
     <div id="photoCameraModal">
-        <!-- Added muted autoplay playsinline to prevent WebView freezing -->
         <video id="photoVideo" muted autoplay playsinline></video>
         <div class="photo-controls">
             <button onclick="togglePhotoFlashlight()" style="background:#ffd166; color:#000; border:none; padding:12px 18px; border-radius:8px; font-size:18px;"><i class="fas fa-bolt"></i></button>
@@ -446,7 +474,8 @@
                         localStorage.setItem('bs_trash', JSON.stringify(trashHistory)); 
                         localStorage.setItem('bs_customers', JSON.stringify(customers));
                         localStorage.setItem('bs_last_sync', lastSyncTime);
-                        renderProducts(); renderHistory(); renderTrash(); updateReports(); renderCustomers();
+                        renderProducts(); renderHistory(); renderTrash(); updateReports(); 
+                        if(document.getElementById('customersSec').classList.contains('active')) renderCustomers();
                         showSyncToast("Data synced from cloud!");
                     }
                 }
@@ -487,7 +516,7 @@
             if(isMqttConnected) { showSyncToast("Syncing to cloud..."); broadcastCloudData(); }
         }
 
-        // --- CUSTOMER AUTOSUGGEST LOGIC ---
+        // --- CUSTOMER LOGIC & RENDER ---
         function showCustomerSuggestions(q) {
             const box = document.getElementById('custSuggestions'); box.innerHTML = '';
             if(!q) { box.style.display = 'none'; return; }
@@ -511,26 +540,94 @@
             document.getElementById('custSuggestions').style.display = 'none';
         }
 
+        function openAddCustomerModal() {
+            document.getElementById('customerModalTitle').innerText = "Add New Customer";
+            document.getElementById('editCustIndex').value = "-1";
+            document.getElementById('cNameInput').value = '';
+            document.getElementById('cPhoneInput').value = '';
+            showSection('addCustomerModal');
+        }
+
+        function editCustomer(idx, e) {
+            stopProp(e); closeAllOptions();
+            document.getElementById('customerModalTitle').innerText = "Edit Customer";
+            document.getElementById('editCustIndex').value = idx;
+            document.getElementById('cNameInput').value = customers[idx].name;
+            document.getElementById('cPhoneInput').value = customers[idx].phone || '';
+            showSection('addCustomerModal');
+        }
+
+        function saveCustomer() {
+            let name = document.getElementById('cNameInput').value.trim();
+            let phone = document.getElementById('cPhoneInput').value.trim();
+            let idx = parseInt(document.getElementById('editCustIndex').value);
+            
+            if(!name) return alert("Customer Name is required!");
+
+            // Duplicate Phone Check
+            if(phone) {
+                let existing = customers.find((c, i) => i !== idx && c.phone === phone);
+                if(existing) {
+                    alert(`⚠️ Error: This phone number is already registered to '${existing.name}'.\nDuplicate numbers are not allowed.`);
+                    return;
+                }
+            }
+
+            let oldName = idx > -1 ? customers[idx].name : null;
+
+            if(idx > -1) {
+                customers[idx].name = name;
+                customers[idx].phone = phone;
+                // Cascading update: update history if name was changed
+                if(oldName && oldName !== name) {
+                    salesHistory.forEach(s => { if(s.custName === oldName) s.custName = name; });
+                }
+            } else {
+                // Check if totally same name already exists to prevent duplicate exact names
+                let existingName = customers.find(c => c.name.toLowerCase() === name.toLowerCase());
+                if(existingName) return alert("A customer with this exact name already exists!");
+                
+                customers.push({name: name, phone: phone});
+            }
+
+            saveData();
+            showSection('customersSec');
+        }
+
         function renderCustomers() {
             const list = document.getElementById('customerList'); 
             const q = document.getElementById('searchCustomer').value.toLowerCase();
             
-            let custDues = {};
+            // Calculate latest sale and due
+            let custStats = {};
             salesHistory.forEach(s => {
-                if(s.status === 'CREDIT' && s.custName !== "Walk-in Customer") {
-                    custDues[s.custName] = (custDues[s.custName] || 0) + s.due;
-                }
+                if(s.custName === "Walk-in Customer") return;
+                let t = new Date(s.date).getTime();
+                if(!custStats[s.custName]) custStats[s.custName] = { lastSale: 0, due: 0 };
+                if(t > custStats[s.custName].lastSale) custStats[s.custName].lastSale = t;
+                if(s.status === 'CREDIT') custStats[s.custName].due += s.due;
             });
 
             let filtered = customers.filter(c => c.name.toLowerCase().includes(q) || (c.phone && c.phone.includes(q)));
-            filtered.sort((a, b) => a.name.localeCompare(b.name));
+            
+            // Sort by latest sale (new to old)
+            filtered.sort((a, b) => {
+                let tA = custStats[a.name] ? custStats[a.name].lastSale : 0;
+                let tB = custStats[b.name] ? custStats[b.name].lastSale : 0;
+                return tB - tA; 
+            });
 
             list.innerHTML = filtered.length === 0 ? '<p style="text-align:center;">No customers found.</p>' : '';
             
             filtered.forEach(c => {
-                let due = custDues[c.name] || 0;
+                const realIndex = customers.indexOf(c);
+                const isSelected = selectedIndexes.has(realIndex) ? 'selected-card' : '';
+                let due = custStats[c.name] ? custStats[c.name].due : 0;
+                
                 list.innerHTML += `
-                <div class="card" style="border-left:4px solid ${due > 0 ? 'var(--primary-red)' : 'var(--green-paid)'}; pointer-events:auto; margin-bottom:8px;">
+                <div class="card ${isSelected}" style="border-left:4px solid ${due > 0 ? 'var(--primary-red)' : 'var(--green-paid)'}; cursor:pointer; margin-bottom:8px;"
+                     onmousedown="handleStartPress('customer', ${realIndex})" onmouseup="handleEndPress()" ontouchstart="handleStartPress('customer', ${realIndex})" ontouchend="handleEndPress()" onclick="handleItemClick('customer', ${realIndex}, event)">
+                    
                     <div class="fallback-icon" style="width:40px;height:40px;font-size:18px;background:#e9ecef;color:#6c757d;"><i class="fas fa-user"></i></div>
                     <div class="card-content" style="pointer-events:none;">
                         <h4 style="font-size:14px;">${c.name}</h4>
@@ -538,8 +635,44 @@
                         ${due > 0 ? `<h4 style="font-size:13px; color:var(--primary-red); margin-top:3px;">Pending Credit: ₹${due.toFixed(2)}</h4>` 
                                   : `<h4 style="font-size:13px; color:var(--green-paid); margin-top:3px;">No Dues</h4>`}
                     </div>
+
+                    <div class="card-opts" id="opts-customer-${realIndex}" onclick="stopProp(event)">
+                        <button class="opt-btn" style="color:#0077b6;" onclick="editCustomer(${realIndex}, event)" title="Edit"><i class="fas fa-edit"></i></button>
+                        <button class="opt-btn" style="color:var(--primary-red);" onclick="startSelection('customer', ${realIndex}, event)" title="Select"><i class="fas fa-check-square"></i></button>
+                        <button class="opt-btn" style="color:#333;" onclick="closeOptionsFix(event)" title="Close"><i class="fas fa-times"></i></button>
+                    </div>
                 </div>`;
             });
+        }
+
+        // Show individual customer invoices
+        function showCustomerDetails(idx) {
+            let c = customers[idx];
+            document.getElementById('cdName').innerText = c.name;
+            document.getElementById('cdPhone').innerText = c.phone || 'N/A';
+            
+            // Filter sales for this customer and reverse to show New to Old
+            let cSales = salesHistory.filter(s => s.custName === c.name).reverse(); 
+            
+            let totalAmount = 0;
+            let listHtml = '';
+            
+            cSales.forEach(sale => {
+                totalAmount += sale.total;
+                listHtml += `
+                <div class="card" style="border-left:4px solid ${sale.status==='PAID' ? 'var(--green-paid)' : 'var(--primary-red)'}; pointer-events:none;">
+                    <div class="card-content">
+                        <h4>Inv: ${sale.invNo} <span class="badge ${sale.status==='PAID' ? 'bg-paid' : 'bg-credit'}">${sale.status}</span></h4>
+                        <p style="font-size:11px;color:gray;">${sale.date}</p>
+                        <h4 style="font-size:14px; margin-top:3px;">Tot: ₹${sale.total} | <span style="color:red;">Due: ₹${sale.due}</span></h4>
+                    </div>
+                </div>`;
+            });
+
+            document.getElementById('cdTotalSales').innerText = totalAmount.toFixed(2);
+            document.getElementById('cdHistoryList').innerHTML = listHtml || '<p style="text-align:center; padding:10px;">No sales history found.</p>';
+            
+            showSection('customerDetailsSec');
         }
 
 
@@ -805,7 +938,7 @@
             stopProp(e); closeAllOptions();
             activeSelectMode = type; selectedIndexes.clear(); selectedIndexes.add(index);
             updateSelectionBarUI();
-            if(type === 'history') renderHistory(); else if(type === 'trash') renderTrash(); else if(type === 'product') renderProducts();
+            if(type === 'history') renderHistory(); else if(type === 'trash') renderTrash(); else if(type === 'product') renderProducts(); else if(type === 'customer') renderCustomers();
         }
         function handleItemClick(type, index, e) {
             if(activeOptionsId) { closeAllOptions(); return; }
@@ -813,13 +946,17 @@
                 if (selectedIndexes.has(index)) selectedIndexes.delete(index);
                 else selectedIndexes.add(index);
                 if (selectedIndexes.size === 0) exitSelectionMode();
-                else { updateSelectionBarUI(); if(type === 'history') renderHistory(); else if(type === 'trash') renderTrash(); else if(type === 'product') renderProducts(); }
+                else { 
+                    updateSelectionBarUI(); 
+                    if(type === 'history') renderHistory(); else if(type === 'trash') renderTrash(); else if(type === 'product') renderProducts(); else if(type === 'customer') renderCustomers();
+                }
             } else if (activeSelectMode === null) {
                 if(type === 'history') {
                     currentInvoiceData = salesHistory[index];
                     generateInvoice(true, salesHistory[index]);
                 }
                 if(type === 'product') editP(index);
+                if(type === 'customer') showCustomerDetails(index);
             }
         }
 
@@ -837,7 +974,7 @@
         function exitSelectionMode() {
             activeSelectMode = null; selectedIndexes.clear();
             document.getElementById('selectionBar').classList.remove('show'); document.getElementById('bottomNav').style.display = 'flex';
-            renderProducts(); renderHistory(); renderTrash();
+            renderProducts(); renderHistory(); renderTrash(); renderCustomers();
         }
         function deleteSelectedItems() {
             if(selectedIndexes.size === 0) return;
@@ -848,6 +985,8 @@
                 if(confirm("Move selected to Trash?")) { indexes.forEach(i => { trashHistory.push(salesHistory[i]); salesHistory.splice(i, 1); }); saveData(); exitSelectionMode(); }
             } else if (activeSelectMode === 'trash') {
                 if(confirm("Permanently Delete selected items?")) { indexes.forEach(i => trashHistory.splice(i, 1)); saveData(); exitSelectionMode(); }
+            } else if (activeSelectMode === 'customer') {
+                if(confirm("Permanently Delete selected customers? (Sales history will not be deleted)")) { indexes.forEach(i => customers.splice(i, 1)); saveData(); exitSelectionMode(); }
             }
         }
         function restoreSelectedItems() {
@@ -1403,6 +1542,7 @@
     </script>
 </body>
 </html>
+
 
 
 
