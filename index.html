@@ -1,653 +1,707 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Spotify - Full Songs via YouTube</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-  <style>
-    :root {
-      --bg-black: #000000;
-      --bg-dark: #121212;
-      --bg-card: #181818;
-      --bg-card-hover: #282828;
-      --spotify-green: #1db954;
-      --text-main: #ffffff;
-      --text-sub: #b3b3b3;
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    body {
-      background-color: var(--bg-black);
-      color: var(--text-main);
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-      overflow: hidden;
-    }
-
-    .app-container {
-      display: flex;
-      flex: 1;
-      height: calc(100vh - 90px);
-      gap: 8px;
-      padding: 8px;
-    }
-
-    /* Sidebar */
-    .sidebar {
-      width: 260px;
-      background-color: var(--bg-dark);
-      border-radius: 8px;
-      padding: 20px 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
-
-    @media (max-width: 768px) {
-      .sidebar { display: none; }
-    }
-
-    .logo {
-      font-size: 20px;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .logo i { color: var(--spotify-green); font-size: 28px; }
-
-    .nav-links {
-      list-style: none;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .nav-links a {
-      color: var(--text-sub);
-      text-decoration: none;
-      font-size: 14px;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      transition: 0.2s;
-    }
-
-    .nav-links a:hover { color: #fff; }
-
-    .categories {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-top: 10px;
-    }
-
-    .cat-btn {
-      background: #242424;
-      border: none;
-      color: var(--text-main);
-      padding: 10px 14px;
-      border-radius: 20px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      text-align: left;
-      transition: background 0.2s;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .cat-btn:hover { background: #333; }
-
-    /* Main View */
-    .main-view {
-      flex: 1;
-      background: linear-gradient(to bottom, #202020, var(--bg-dark));
-      border-radius: 8px;
-      padding: 20px;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .mobile-header {
-      display: none;
-      align-items: center;
-      gap: 8px;
-      font-size: 20px;
-      font-weight: 700;
-      margin-bottom: 16px;
-    }
-
-    .mobile-header i { color: var(--spotify-green); }
-
-    @media (max-width: 768px) {
-      .mobile-header { display: flex; }
-    }
-
-    .search-bar-wrap {
-      display: flex;
-      gap: 10px;
-      max-width: 550px;
-      margin-bottom: 24px;
-      width: 100%;
-    }
-
-    .search-input-box {
-      position: relative;
-      flex: 1;
-    }
-
-    .search-input-box i {
-      position: absolute;
-      left: 16px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: var(--text-sub);
-    }
-
-    .search-input-box input {
-      width: 100%;
-      padding: 12px 18px 12px 42px;
-      border-radius: 50px;
-      border: 1px solid transparent;
-      outline: none;
-      background-color: #242424;
-      color: #fff;
-      font-size: 14px;
-    }
-
-    .search-input-box input:focus {
-      border-color: #fff;
-      background-color: #2c2c2c;
-    }
-
-    .search-btn {
-      background-color: var(--spotify-green);
-      border: none;
-      color: #000;
-      font-weight: 700;
-      padding: 0 20px;
-      border-radius: 50px;
-      cursor: pointer;
-      font-size: 14px;
-    }
-
-    .mobile-chips {
-      display: none;
-      gap: 8px;
-      overflow-x: auto;
-      margin-bottom: 20px;
-    }
-
-    .mobile-chips::-webkit-scrollbar { display: none; }
-
-    @media (max-width: 768px) {
-      .mobile-chips { display: flex; }
-    }
-
-    .chip {
-      background: #242424;
-      border: none;
-      color: #fff;
-      padding: 8px 16px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 600;
-      white-space: nowrap;
-      cursor: pointer;
-    }
-
-    .song-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-      gap: 16px;
-    }
-
-    @media (max-width: 480px) {
-      .song-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
-      }
-    }
-
-    .song-card {
-      background-color: var(--bg-card);
-      padding: 12px;
-      border-radius: 6px;
-      cursor: pointer;
-      position: relative;
-    }
-
-    .song-card img {
-      width: 100%;
-      aspect-ratio: 1;
-      border-radius: 4px;
-      object-fit: cover;
-      margin-bottom: 10px;
-    }
-
-    .song-title {
-      font-size: 14px;
-      font-weight: 600;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .song-artist {
-      font-size: 12px;
-      color: var(--text-sub);
-      margin-top: 4px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    /* Player Bar Container */
-    .player-bar {
-      height: 90px;
-      background-color: var(--bg-black);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 16px;
-      border-top: 1px solid #222;
-    }
-
-    .track-meta {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      width: 30%;
-    }
-
-    .track-meta img {
-      width: 52px;
-      height: 52px;
-      border-radius: 4px;
-      object-fit: cover;
-    }
-
-    .meta-text {
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-
-    .meta-text span:first-child {
-      font-size: 13px;
-      font-weight: 600;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .meta-text span:last-child {
-      font-size: 11px;
-      color: var(--text-sub);
-    }
-
-    /* YouTube Iframe Viewport */
-    .stream-embed-box {
-      flex: 1;
-      height: 70px;
-      border-radius: 6px;
-      overflow: hidden;
-      background: #000;
-      max-width: 400px;
-      margin: 0 10px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      position: relative;
-    }
-
-    /* The actual YouTube iframe will sit here normally, so YouTube doesn't block it */
-    #yt-player {
-      width: 100%;
-      height: 100%;
-      pointer-events: none; /* User interacts via our custom buttons, not directly with YouTube */
-    }
-
-    /* Custom Play/Pause Overlay over YouTube */
-    .overlay-controls {
-      position: absolute;
-      width: 100%;
-      height: 100%;
-      top: 0;
-      left: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 15px;
-      background: rgba(0, 0, 0, 0.5); /* Dim background so video is visible but controls pop */
-      z-index: 10;
-    }
-
-    .overlay-controls button {
-      background: none;
-      border: none;
-      color: #fff;
-      font-size: 18px;
-      cursor: pointer;
-    }
-
-    .overlay-controls #playPauseBtn {
-      background-color: var(--spotify-green);
-      color: #000;
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 14px;
-    }
-
-    .timeline-bar {
-      width: 25%;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 11px;
-      color: var(--text-sub);
-    }
-
-    .timeline-bar input[type="range"] {
-      flex: 1;
-      height: 4px;
-      accent-color: var(--spotify-green);
-      cursor: pointer;
-    }
-
-    @media (max-width: 768px) {
-      .track-meta { width: 45%; }
-      .stream-embed-box { flex: 1; max-width: none; }
-      .timeline-bar { display: none; } /* Hide timeline on mobile to fit the video frame nicely */
-    }
-  </style>
-</head>
-<body>
-
-  <div class="app-container">
-    <div class="sidebar">
-      <div class="logo">
-        <i class="fa-brands fa-spotify"></i> Spotify
-      </div>
-      <ul class="nav-links">
-        <li class="active"><a href="#"><i class="fa-solid fa-house"></i> Home</a></li>
-        <li><a href="#"><i class="fa-solid fa-magnifying-glass"></i> Search</a></li>
-      </ul>
-      <p style="font-size: 11px; color: var(--text-sub); margin-top: 10px; font-weight: 700;">POPULAR GENRES</p>
-      <div class="categories">
-        <button class="cat-btn" onclick="executeSearch('Bangla Romantic Hits')"><i class="fa-solid fa-music"></i> Bangla Hits</button>
-        <button class="cat-btn" onclick="executeSearch('Hindi Bollywood Songs')"><i class="fa-solid fa-music"></i> Hindi Romantic</button>
-        <button class="cat-btn" onclick="executeSearch('Arijit Singh Best Songs')"><i class="fa-solid fa-music"></i> Arijit Singh</button>
-      </div>
-    </div>
-
-    <div class="main-view">
-      <div class="mobile-header">
-        <i class="fa-brands fa-spotify"></i> Spotify
-      </div>
-
-      <div class="search-bar-wrap">
-        <div class="search-input-box">
-          <i class="fa-solid fa-magnifying-glass"></i>
-          <input type="text" id="searchInput" placeholder="Search full song or artist name..." />
-        </div>
-        <button class="search-btn" id="searchBtn">Search</button>
-      </div>
-
-      <div class="mobile-chips">
-        <button class="chip" onclick="executeSearch('Arijit Singh')">Arijit Singh</button>
-        <button class="chip" onclick="executeSearch('Bangla Romantic')">Bangla Hits</button>
-        <button class="chip" onclick="executeSearch('Zubeen Garg')">Zubeen Garg</button>
-      </div>
-
-      <h2 style="font-size: 18px; margin-bottom: 14px;" id="sectionTitle">Top Full Songs</h2>
-      <div class="song-grid" id="songGrid">
-        <p style="color: var(--text-sub);">Finding songs...</p>
-      </div>
-    </div>
-  </div>
-
-  <div class="player-bar">
-    <div class="track-meta">
-      <img id="playerCover" src="https://via.placeholder.com/52" alt="Cover" />
-      <div class="meta-text">
-        <span id="playerTitle">No song playing</span>
-        <span id="playerArtist">Tap a song to play</span>
-      </div>
-    </div>
-
-    <!-- Visible YouTube Player Box -->
-    <div class="stream-embed-box">
-      <div id="yt-player"></div>
-      
-      <!-- Overlay controls on top of the video -->
-      <div class="overlay-controls">
-        <button id="prevBtn"><i class="fa-solid fa-backward-step"></i></button>
-        <button id="playPauseBtn"><i class="fa-solid fa-play"></i></button>
-        <button id="nextBtn"><i class="fa-solid fa-forward-step"></i></button>
-      </div>
-    </div>
-
-    <div class="timeline-bar">
-      <span id="currTime">0:00</span>
-      <input type="range" id="progressBar" value="0" min="0" max="100" />
-      <span id="durTime">0:00</span>
-    </div>
-  </div>
-
-  <!-- Load YouTube Iframe API -->
-  <script src="https://www.youtube.com/iframe_api"></script>
-
-  <script>
-    const songGrid = document.getElementById("songGrid");
-    const searchInput = document.getElementById("searchInput");
-    const searchBtn = document.getElementById("searchBtn");
-    const sectionTitle = document.getElementById("sectionTitle");
-
-    const playerCover = document.getElementById("playerCover");
-    const playerTitle = document.getElementById("playerTitle");
-    const playerArtist = document.getElementById("playerArtist");
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bholanath Store POS</title>
     
-    const playPauseBtn = document.getElementById("playPauseBtn");
-    const prevBtn = document.getElementById("prevBtn");
-    const nextBtn = document.getElementById("nextBtn");
-    const progressBar = document.getElementById("progressBar");
-    const currTimeEl = document.getElementById("currTime");
-    const durTimeEl = document.getElementById("durTime");
+    <!-- Google Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
 
-    let playlist = [];
-    let currentIndex = -1;
-    let ytPlayer;
-    let progressTimer;
-
-    // --- 1. INITIALIZE YOUTUBE PLAYER ---
-    function onYouTubeIframeAPIReady() {
-      ytPlayer = new YT.Player('yt-player', {
-        height: '100%',
-        width: '100%',
-        playerVars: {
-          'autoplay': 1,
-          'controls': 0, // Hide YouTube's native controls
-          'disablekb': 1,
-          'fs': 0,
-          'modestbranding': 1,
-          'playsinline': 1,
-          'rel': 0
-        },
-        events: {
-          'onStateChange': onPlayerStateChange
+    <style>
+        :root {
+            --bg-color: #f4f6f8; --primary-red: #e63946; --green-paid: #2a9d8f; 
+            --orange-credit: #f4a261; --text-dark: #2b2d42; --border-color: #dde2e5;
         }
-      });
-    }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-dark); padding-bottom: 70px; overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
 
-    function onPlayerStateChange(event) {
-      if (event.data === YT.PlayerState.PLAYING) {
-        updatePlayIcon(true);
-        startTrackingProgress();
-        playerArtist.innerText = "Playing Original Full Song (Via YouTube)";
-        playerArtist.style.color = "var(--spotify-green)";
-      } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.CUED) {
-        updatePlayIcon(false);
-        stopTrackingProgress();
-      } else if (event.data === YT.PlayerState.ENDED) {
-        nextBtn.click();
-      } else if (event.data === YT.PlayerState.BUFFERING) {
-        playerArtist.innerText = "⏳ Buffering...";
-      }
-    }
+        .navbar { background: #fff; display: flex; justify-content: space-around; padding: 8px 0; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); position: fixed; bottom: 0; width: 100%; z-index: 100; }
+        .nav-btn { background: none; border: none; font-size: 11px; font-weight: 600; color: #888; cursor: pointer; display: flex; flex-direction: column; align-items: center; flex: 1; }
+        .nav-btn i { font-size: 20px; margin-bottom: 4px; }
+        .nav-btn.active { color: var(--primary-red); }
 
-    // --- 2. SEARCH METADATA (iTunes JSONP - No CORS Block) ---
-    function searchSongsJSONP(query) {
-      sectionTitle.innerText = `Results for "${query}"`;
-      songGrid.innerHTML = `<p style="color: var(--text-sub);">Finding songs...</p>`;
+        .section { display: none; padding: 15px; max-width: 800px; margin: 0 auto; }
+        .section.active { display: block; }
 
-      const oldScript = document.getElementById('music-jsonp');
-      if (oldScript) oldScript.remove();
+        input, select { width: 100%; padding: 10px 12px; margin-bottom: 12px; border: 1px solid var(--border-color); border-radius: 8px; outline: none; font-size: 14px; background: #fff; }
+        input:focus { border-color: var(--primary-red); }
+        .btn-red, .btn-green, .btn-blue, .btn-gray { color: #fff; border: none; padding: 12px 15px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: 0.2s; width: 100%; }
+        .btn-red { background: var(--primary-red); } .btn-green { background: var(--green-paid); } .btn-blue { background: #0077b6; } .btn-gray { background: #6c757d; }
 
-      const script = document.createElement('script');
-      script.id = 'music-jsonp';
-      script.src = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&media=music&entity=song&country=IN&limit=30&callback=handleMusicResponse`;
-      document.body.appendChild(script);
-    }
+        .tabs { display: flex; background: #fff; border-radius: 8px; margin-bottom: 15px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .tab { flex: 1; text-align: center; padding: 10px; font-weight: 600; font-size: 13px; cursor: pointer; border-bottom: 2px solid transparent; color: #666; }
+        .tab.active { color: var(--primary-red); border-bottom: 2px solid var(--primary-red); background: #fff5f5; }
 
-    window.handleMusicResponse = function(data) {
-      if (data && data.results && data.results.length > 0) {
-        playlist = data.results.map(item => ({
-          title: item.trackName,
-          artist: item.artistName,
-          cover: item.artworkUrl100 ? item.artworkUrl100.replace('100x100bb', '300x300bb') : 'https://via.placeholder.com/150',
-          query: `${item.trackName} ${item.artistName} song` // Critical to fetch correct YouTube video
-        }));
-        renderGrid(playlist);
-      } else {
-        songGrid.innerHTML = `<p style="color: var(--text-sub);">No tracks found.</p>`;
-      }
-    };
+        /* Card & Full Overlay Options Menu */
+        .card { background: #fff; padding: 12px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 10px; transition: 0.2s; position: relative; overflow: hidden; user-select: none; -webkit-touch-callout: none; border: 2px solid transparent; }
+        .card-img { width: 50px; height: 50px; border-radius: 6px; object-fit: cover; }
+        .fallback-icon { width: 50px; height: 50px; border-radius: 6px; background: #e2e8f0; color: #a0aec0; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+        .card-content { flex: 1; pointer-events: none; }
+        .badge { padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; color: #fff; }
+        .bg-paid { background: var(--green-paid); } .bg-credit { background: var(--primary-red); }
 
-    function renderGrid(tracks) {
-      songGrid.innerHTML = "";
-      tracks.forEach((song, idx) => {
-        const card = document.createElement("div");
-        card.className = "song-card";
-        card.innerHTML = `
-          <img src="${song.cover}" alt="${song.title}" loading="lazy" />
-          <div class="song-title">${song.title}</div>
-          <div class="song-artist">${song.artist}</div>
-        `;
-        card.addEventListener("click", () => loadFullSong(idx));
-        songGrid.appendChild(card);
-      });
-    }
+        /* Card Overlay - Completely covers the card */
+        .card-opts { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.95); display: flex; align-items: center; justify-content: space-evenly; opacity: 0; pointer-events: none; transition: opacity 0.2s ease; z-index: 10; backdrop-filter: blur(2px); }
+        .card-opts.show { opacity: 1; pointer-events: auto; }
+        .opt-btn { width: 40px; height: 40px; border-radius: 50%; border: none; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.15); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .opt-btn:active { transform: scale(0.9); }
 
-    // --- 3. PLAY FULL YOUTUBE VIDEO/AUDIO ---
-    function loadFullSong(idx) {
-      if (idx < 0 || idx >= playlist.length || !ytPlayer || !ytPlayer.loadPlaylist) {
-          alert("Player initializing, please wait a second...");
-          return;
-      }
-      currentIndex = idx;
-      const track = playlist[idx];
+        /* Selection Mode */
+        .selected-card { background: #fff5f5 !important; border-color: var(--primary-red) !important; transform: scale(0.98); }
+        #selectionBar { position: fixed; top: 0; left: 0; width: 100%; background: var(--primary-red); color: white; display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; z-index: 10000; transform: translateY(-100%); transition: transform 0.3s ease; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        #selectionBar.show { transform: translateY(0); }
+        #selectionBar button { background: none; border: none; color: white; font-size: 20px; margin-left: 20px; cursor: pointer; }
 
-      playerTitle.innerText = track.title;
-      playerArtist.innerText = "⏳ Loading full song...";
-      playerArtist.style.color = "var(--text-sub)";
-      playerCover.src = track.cover;
+        /* Custom Invoice Summary */
+        .amount-summary { background: #fff; padding: 15px; border-radius: 8px; margin-top: 15px; border: 1px solid var(--border-color); }
+        .amount-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; }
+        .amount-row.total { font-size: 16px; font-weight: 700; color: var(--primary-red); border-top: 1px dashed #ccc; padding-top: 8px; }
 
-      updatePlayIcon(true);
+        /* General Modals */
+        #invoiceModal, #creditPayModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #fff; z-index: 5000; overflow-y: auto; }
+        .top-bar { background: #fff; padding: 12px 15px; display: flex; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 5001; }
+        .top-bar button { background: none; border: none; font-size: 16px; font-weight: 600; color: var(--text-dark); display: flex; gap: 8px; }
+        
+        #printArea { padding: 20px; max-width: 600px; margin: 0 auto; background: #fff; position: relative; overflow: hidden; }
+        .watermark { position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); font-size: 60px; font-weight: 800; opacity: 0.1; letter-spacing: 5px; border: 5px solid; padding: 10px 20px; border-radius: 10px; pointer-events: none; }
+        .wm-paid { color: var(--green-paid); border-color: var(--green-paid); } .wm-credit { color: var(--primary-red); border-color: var(--primary-red); }
+        .invoice-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+        .invoice-table th, .invoice-table td { padding: 8px 5px; border-bottom: 1px solid #eee; text-align: left; }
+        .invoice-table th { background: #f8f9fa; font-weight: 600; }
+        
+        .suggestions-box { position: absolute; width: 100%; background: #fff; border: 1px solid #ddd; border-radius: 8px; max-height: 200px; overflow-y: auto; z-index: 1000; display: none; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .suggestion-item { padding: 10px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 10px; cursor: pointer; }
+        #syncIndicator { position: fixed; top: 10px; right: 10px; background: #333; color: #fff; padding: 5px 10px; border-radius: 20px; font-size: 10px; z-index: 9999; display: none; }
+    </style>
+</head>
+<body onclick="closeAllOptions(event)">
 
-      // YouTube automatically searches the song name and plays the first result (Official Song)
-      ytPlayer.loadPlaylist({
-        listType: 'search',
-        list: track.query,
-        index: 0,
-        suggestedQuality: 'small' // Keeps data usage low since we mainly want audio
-      });
-    }
+    <!-- Selection Bar -->
+    <div id="selectionBar">
+        <div><i class="fas fa-check-circle"></i> <span id="selectionCount">0 Selected</span></div>
+        <div id="selectionActions"></div>
+    </div>
 
-    // --- 4. CONTROLS ---
-    function togglePlayback() {
-      if (!ytPlayer || !ytPlayer.getPlayerState) return;
-      const state = ytPlayer.getPlayerState();
-      
-      if (state === YT.PlayerState.PLAYING) {
-        ytPlayer.pauseVideo();
-      } else {
-        ytPlayer.playVideo();
-      }
-    }
+    <div id="syncIndicator"><i class="fas fa-sync fa-spin"></i> Syncing...</div>
 
-    function updatePlayIcon(isPlaying) {
-      playPauseBtn.innerHTML = isPlaying ? '<i class="fa-solid fa-pause"></i>' : '<i class="fa-solid fa-play"></i>';
-    }
+    <!-- HOME SECTION -->
+    <div id="home" class="section active">
+        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+            <button class="btn-red" style="flex:1;" onclick="openNewSale()"><i class="fas fa-plus"></i> Add Sell</button>
+            <button class="btn-blue" style="flex:1; background:var(--orange-credit);" onclick="openAddCreditDirect()"><i class="fas fa-hand-holding-usd"></i> Add Credit</button>
+        </div>
+        <input type="text" id="searchHistory" placeholder="Search by Name, Date, or Inv No..." oninput="renderHistory()">
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('all')" id="tab-all">All</div>
+            <div class="tab" onclick="switchTab('paid')" id="tab-paid">Paid</div>
+            <div class="tab" onclick="switchTab('credit')" id="tab-credit">Credit</div>
+        </div>
+        <div id="historyList"></div>
+    </div>
 
-    function startTrackingProgress() {
-      stopTrackingProgress();
-      progressTimer = setInterval(() => {
-        if (ytPlayer && ytPlayer.getCurrentTime && ytPlayer.getDuration) {
-          const curr = ytPlayer.getCurrentTime();
-          const dur = ytPlayer.getDuration();
-          if (dur > 0) {
-            progressBar.value = (curr / dur) * 100;
-            currTimeEl.innerText = formatTime(curr);
-            durTimeEl.innerText = formatTime(dur);
-          }
+    <!-- ADD SELL SECTION -->
+    <div id="addSell" class="section">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h2 id="sellTitle">New Sale</h2>
+            <button class="btn-red" style="width: auto; padding: 6px 12px; background:#333;" onclick="showSection('home')">Back</button>
+        </div>
+        <div style="background:#fff; padding:10px; border-radius:8px; margin-bottom:15px; border-left:3px solid var(--green-paid); box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+            <input type="text" id="custName" placeholder="Customer Name" style="margin-bottom:8px;">
+            <input type="tel" id="custPhone" placeholder="Phone Number (Optional)" style="margin-bottom:0;">
+        </div>
+        <div style="display:flex; gap:8px; position:relative;" id="searchProductGroup">
+            <input type="text" id="searchProduct" placeholder="Search product..." oninput="showSuggestions(this.value)">
+            <button class="btn-red" style="width:50px; height:42px; padding:0;" onclick="openScanner('sell')"><i class="fas fa-camera"></i></button>
+            <div id="suggestions" class="suggestions-box"></div>
+        </div>
+        <div id="cartList" style="min-height: 100px;"></div>
+        
+        <input type="text" id="upiId" placeholder="UPI ID (Optional for QR Code)" style="margin-top: 10px;">
+        
+        <div style="background:#fff; padding:15px; border-radius:8px; margin-top:5px; border:1px solid var(--border-color);">
+            <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:14px;"><span>Sub Total:</span> <span>₹<span id="cartTotal">0.00</span></span></div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin:10px 0; font-size:14px;">
+                <span style="font-weight:600;">Received Amount:</span>
+                <input type="number" id="receivedAmt" placeholder="0" style="width:100px; margin:0; text-align:right;" oninput="calculateDue()">
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:16px; font-weight:700; color:var(--primary-red); border-top:1px dashed #ccc; padding-top:8px;"><span>Due Amount:</span> <span>₹<span id="dueAmt">0.00</span></span></div>
+        </div>
+        <button class="btn-red" style="margin-top:15px;" onclick="generateInvoice(false)">Preview & Generate Invoice</button>
+    </div>
+
+    <!-- PRODUCTS SECTION -->
+    <div id="products" class="section">
+        <h2>Products Directory</h2>
+        <input type="text" id="searchDirProduct" placeholder="Search product..." oninput="renderProducts()">
+        <button class="btn-red" style="margin-bottom: 15px;" onclick="openAddProductMode()"><i class="fas fa-plus"></i> Add Product</button>
+        <div id="productList"></div>
+    </div>
+
+    <!-- ADD PRODUCT MODAL -->
+    <div id="addProductModal" class="section">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h2 id="productModalTitle">Add Product</h2>
+            <button class="btn-red" style="width: auto; background:#333; padding: 6px 12px;" onclick="showSection('products')">Back</button>
+        </div>
+        <input type="hidden" id="editIndex" value="-1">
+        <div style="text-align: center; margin-bottom: 15px;">
+            <div class="fallback-icon" id="pImgFallback" style="width:100px; height:100px; margin:0 auto 5px; font-size:40px;"><i class="fas fa-box-open"></i></div>
+            <img id="pImgPreview" src="" style="width:100px; height:100px; object-fit:cover; border-radius:8px; border:1px solid #ccc; margin:0 auto 5px; display:none;">
+            <input type="file" id="pImageInput" accept="image/*" style="display: none;" onchange="handleImageUpload(event)">
+            <div><button class="btn-blue" style="width:auto; padding:5px 10px;" onclick="document.getElementById('pImageInput').click()"><i class="fas fa-image"></i> Add Photo</button></div>
+        </div>
+        <div style="display:flex; gap:8px;">
+            <input type="text" id="pBarcode" placeholder="Barcode">
+            <button class="btn-red" style="width: 50px; background: #444;" onclick="openScanner('product')"><i class="fas fa-camera"></i></button>
+        </div>
+        <input type="text" id="pName" placeholder="Product Name">
+        <input type="number" id="pPrice" placeholder="Price (₹)">
+        <button class="btn-red" onclick="saveProduct()">Save Product</button>
+    </div>
+
+    <!-- REPORTS & TRASH SECTION -->
+    <div id="reports" class="section">
+        <h2>Business Reports</h2>
+        <div class="card" style="display:block; border:none; pointer-events:none;">
+            <p>Total Sales: <strong style="color:var(--primary-red); font-size:18px;">₹<span id="repTotalSales">0.00</span></strong></p>
+            <p>Total Received: <strong style="color:var(--green-paid);">₹<span id="repReceived">0.00</span></strong></p>
+            <p>Total Pending Credit: <strong style="color:var(--orange-credit);">₹<span id="repDue">0.00</span></strong></p>
+        </div>
+        <button class="btn-gray" style="margin: 15px 0;" onclick="showSection('trashSec')"><i class="fas fa-trash-alt"></i> View Trash Bin</button>
+        <p style="font-size:11px; color:gray; margin-top:20px; text-align:center;">Your data is automatically synced via MQTT in real-time.</p>
+    </div>
+
+    <!-- TRASH BIN SECTION -->
+    <div id="trashSec" class="section">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h2>Trash Bin</h2>
+            <button class="btn-red" style="width: auto; padding: 6px 12px; background:#333;" onclick="showSection('reports')">Back</button>
+        </div>
+        <p style="font-size:11px; color:gray; margin-bottom:10px;">Long press items to Restore or Permanently Delete.</p>
+        <input type="text" id="searchTrash" placeholder="Search by Name, Date, or Inv No..." oninput="renderTrash()">
+        <div id="trashList"></div>
+    </div>
+
+    <!-- INVOICE MODAL -->
+    <div id="invoiceModal">
+        <div class="top-bar"><button onclick="closeInvoiceUI()"><i class="fas fa-arrow-left"></i> Back</button></div>
+        <div id="printArea">
+            <div id="invWatermark" class="watermark">PAID</div>
+            <div style="text-align: center; border-bottom: 2px solid #222; padding-bottom: 10px; margin-bottom:15px;">
+                <h1 style="font-size: 22px; text-transform: uppercase;">Bholanath Store</h1>
+                <p style="font-size: 11px; color: #555;">Khairabari, Assam</p>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 15px;">
+                <div><strong>To:</strong> <span id="invCustName"></span><br><span id="invCustPhone"></span></div>
+                <div style="text-align: right;"><strong>Date:</strong> <span id="invDate"></span><br><strong>Inv:</strong> <span id="invNo"></span></div>
+            </div>
+            <table class="invoice-table">
+                <thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
+                <tbody id="invoiceTableBody"></tbody>
+            </table>
+            <div style="margin-top: 15px; border-top: 1px solid #ccc; padding-top: 10px; font-size:13px;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>Total Amount:</span> <strong>₹<span id="invTotal">0.00</span></strong></div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px; color:var(--green-paid);"><span>Received:</span> <strong>₹<span id="invReceived">0.00</span></strong></div>
+                <div style="display:flex; justify-content:space-between; font-size:15px; color:var(--primary-red);"><span>Due (Credit):</span> <strong>₹<span id="invDue">0.00</span></strong></div>
+            </div>
+            <div id="qrContainer" style="display:none; text-align:center; margin-top:20px; padding-top:15px; border-top:1px dashed #ccc;">
+                <p style="margin-bottom:5px; font-size:12px; color:gray;">Scan to Pay via UPI</p>
+                <div id="qrcode" style="display:flex; justify-content:center;"></div>
+            </div>
+        </div>
+        <div style="padding: 20px; display:flex; flex-direction:column; gap:10px;">
+            <button class="btn-green" onclick="shareOnWhatsApp()"><i class="fab fa-whatsapp"></i> WhatsApp Share</button>
+            <button class="btn-blue" onclick="downloadPDF()"><i class="fas fa-file-pdf"></i> Download PDF</button>
+            <button class="btn-red" id="saveInvoiceBtn" onclick="saveAndCloseInvoice()"><i class="fas fa-check-circle"></i> Save & Done</button>
+        </div>
+    </div>
+
+    <!-- CREDIT EDIT MODAL -->
+    <div id="creditPayModal">
+        <div class="top-bar"><button onclick="document.getElementById('creditPayModal').style.display='none'"><i class="fas fa-arrow-left"></i> Back</button></div>
+        <div style="padding:20px;">
+            <h2>Receive Credit Payment</h2>
+            <div class="card" style="display:block; border:none; pointer-events:none;">
+                <p>Customer: <strong id="cpName"></strong></p>
+                <p>Invoice Total: <strong>₹<span id="cpTotal"></span></strong></p>
+                <p>Already Received: <strong>₹<span id="cpAlreadyRec"></span></strong></p>
+                <p>Current Due: <strong style="color:var(--primary-red);">₹<span id="cpDue"></span></strong></p>
+            </div>
+            <label style="font-weight:600; margin-top:15px; display:block;">Enter New Payment Received:</label>
+            <input type="number" id="cpNewPay" placeholder="0">
+            <button class="btn-green" onclick="submitCreditPayment()">Update Payment</button>
+        </div>
+    </div>
+
+    <!-- BOTTOM NAV -->
+    <div class="navbar" id="bottomNav">
+        <button class="nav-btn active" onclick="showSection('home')" id="nav-home"><i class="fas fa-home"></i>Home</button>
+        <button class="nav-btn" onclick="showSection('products')" id="nav-products"><i class="fas fa-box"></i>Products</button>
+        <button class="nav-btn" onclick="showSection('reports')" id="nav-reports"><i class="fas fa-chart-pie"></i>Reports</button>
+    </div>
+
+    <script>
+        // Data & States
+        let products = JSON.parse(localStorage.getItem('bs_products')) || [];
+        let salesHistory = JSON.parse(localStorage.getItem('bs_sales')) || [];
+        let trashHistory = JSON.parse(localStorage.getItem('bs_trash')) || [];
+        let cart = []; 
+        let totalAmount = 0;
+        let currentTab = 'all';
+        let currentInvoiceData = null;
+        let activeCreditEditIndex = -1;
+        let activeEditInvoiceIndex = -1; 
+        let base64ImageString = ""; 
+
+        // Selection & Long Press Engine
+        let activeSelectMode = null; 
+        let selectedIndexes = new Set();
+        let pressTimer = null;
+        let isPressing = false;
+        let activeOptionsId = null; 
+
+        // MQTT Sync
+        const mqttTopic = 'bholanath_store_debojit_pos_data_2026'; 
+        const clientId = 'pos_' + Math.random().toString(16).substr(2, 8);
+        let lastSyncTime = parseInt(localStorage.getItem('bs_last_sync')) || 0;
+        let isMqttConnected = false;
+        const mqttClient = mqtt.connect('wss://broker.hivemq.com:8000/mqtt', { clientId: clientId });
+
+        mqttClient.on('connect', () => { isMqttConnected = true; mqttClient.subscribe(mqttTopic); });
+        mqttClient.on('message', (topic, message) => {
+            try {
+                const data = JSON.parse(message.toString());
+                if (data.timestamp && data.timestamp > lastSyncTime) {
+                    products = data.products || []; salesHistory = data.salesHistory || []; trashHistory = data.trashHistory || [];
+                    lastSyncTime = data.timestamp;
+                    localStorage.setItem('bs_products', JSON.stringify(products));
+                    localStorage.setItem('bs_sales', JSON.stringify(salesHistory));
+                    localStorage.setItem('bs_trash', JSON.stringify(trashHistory));
+                    localStorage.setItem('bs_last_sync', lastSyncTime);
+                    renderProducts(); renderHistory(); renderTrash(); updateReports();
+                }
+            } catch(e) {}
+        });
+
+        window.onload = () => { renderProducts(); renderHistory(); updateReports(); }
+
+        function saveData() {
+            localStorage.setItem('bs_products', JSON.stringify(products));
+            localStorage.setItem('bs_sales', JSON.stringify(salesHistory));
+            localStorage.setItem('bs_trash', JSON.stringify(trashHistory));
+            lastSyncTime = Date.now(); localStorage.setItem('bs_last_sync', lastSyncTime);
+            updateReports();
+
+            if(isMqttConnected) {
+                const indicator = document.getElementById('syncIndicator'); indicator.style.display = 'block';
+                const payload = JSON.stringify({ products, salesHistory, trashHistory, timestamp: lastSyncTime });
+                mqttClient.publish(mqttTopic, payload, { retain: true }); 
+                setTimeout(() => { indicator.style.display = 'none'; }, 1000);
+            }
         }
-      }, 1000);
-    }
 
-    function stopTrackingProgress() {
-      if (progressTimer) clearInterval(progressTimer);
-    }
+        // Properly stop event propagation for closing buttons
+        function stopProp(e) { if(e) { e.preventDefault(); e.stopPropagation(); } }
 
-    function formatTime(sec) {
-      if (isNaN(sec)) return "0:00";
-      const min = Math.floor(sec / 60);
-      const rem = Math.floor(sec % 60);
-      return `${min}:${rem < 10 ? '0' : ''}${rem}`;
-    }
+        // --- LONG PRESS & FULL-COVERAGE CONTEXT MENU ---
+        function handleStartPress(type, index) {
+            if(activeSelectMode !== null) return; 
+            isPressing = true;
+            pressTimer = setTimeout(() => {
+                if (isPressing) {
+                    isPressing = false;
+                    showOptions(type, index);
+                }
+            }, 500); 
+        }
+        function handleEndPress() { isPressing = false; clearTimeout(pressTimer); }
 
-    function executeSearch(query) {
-      const q = query || searchInput.value.trim();
-      if (q !== "") {
-        searchSongsJSONP(q);
-      }
-    }
+        function showOptions(type, index) {
+            closeAllOptions();
+            activeOptionsId = `opts-${type}-${index}`;
+            const el = document.getElementById(activeOptionsId);
+            if(el) el.classList.add('show');
+        }
 
-    // Event Listeners
-    playPauseBtn.addEventListener("click", togglePlayback);
-    nextBtn.addEventListener("click", () => { if (currentIndex + 1 < playlist.length) loadFullSong(currentIndex + 1); });
-    prevBtn.addEventListener("click", () => { if (currentIndex - 1 >= 0) loadFullSong(currentIndex - 1); });
+        function closeAllOptions(e) {
+            document.querySelectorAll('.card-opts').forEach(el => el.classList.remove('show'));
+            activeOptionsId = null;
+        }
 
-    progressBar.addEventListener("input", () => {
-      if (ytPlayer && ytPlayer.getDuration) {
-        const target = (progressBar.value / 100) * ytPlayer.getDuration();
-        ytPlayer.seekTo(target, true);
-      }
-    });
+        function closeOptionsFix(e) {
+            stopProp(e);
+            closeAllOptions();
+        }
 
-    searchBtn.addEventListener("click", () => executeSearch());
-    searchInput.addEventListener("keydown", (e) => { if (e.key === "Enter") executeSearch(); });
+        // --- SELECTION MODE LOGIC ---
+        function startSelection(type, index, e) {
+            stopProp(e); closeAllOptions();
+            activeSelectMode = type; selectedIndexes.clear(); selectedIndexes.add(index);
+            updateSelectionBarUI();
+            if(type === 'history') renderHistory(); else if(type === 'trash') renderTrash(); else if(type === 'product') renderProducts();
+        }
 
-    // Initial Load
-    setTimeout(() => { executeSearch("Arijit Singh Full Songs"); }, 500);
-  </script>
+        function handleItemClick(type, index, e) {
+            if(activeOptionsId) { closeAllOptions(); return; }
+            if (activeSelectMode === type) {
+                if (selectedIndexes.has(index)) selectedIndexes.delete(index);
+                else selectedIndexes.add(index);
+                
+                if (selectedIndexes.size === 0) exitSelectionMode();
+                else { updateSelectionBarUI(); if(type === 'history') renderHistory(); else if(type === 'trash') renderTrash(); else if(type === 'product') renderProducts(); }
+            } else if (activeSelectMode === null) {
+                if(type === 'history') generateInvoice(true, salesHistory[index]);
+                if(type === 'product') editP(index); // Optional: normal click edits product
+            }
+        }
+
+        function updateSelectionBarUI() {
+            document.getElementById('selectionCount').innerText = `${selectedIndexes.size} Selected`;
+            document.getElementById('selectionBar').classList.add('show');
+            document.getElementById('bottomNav').style.display = 'none';
+            const actions = document.getElementById('selectionActions');
+            if(activeSelectMode === 'trash') {
+                actions.innerHTML = `<button onclick="restoreSelectedItems()"><i class="fas fa-undo"></i></button><button onclick="deleteSelectedItems()"><i class="fas fa-trash"></i></button><button onclick="exitSelectionMode()"><i class="fas fa-times"></i></button>`;
+            } else {
+                actions.innerHTML = `<button onclick="deleteSelectedItems()"><i class="fas fa-trash"></i></button><button onclick="exitSelectionMode()"><i class="fas fa-times"></i></button>`;
+            }
+        }
+
+        function exitSelectionMode() {
+            activeSelectMode = null; selectedIndexes.clear();
+            document.getElementById('selectionBar').classList.remove('show'); document.getElementById('bottomNav').style.display = 'flex';
+            renderProducts(); renderHistory(); renderTrash();
+        }
+
+        function deleteSelectedItems() {
+            if(selectedIndexes.size === 0) return;
+            let indexes = Array.from(selectedIndexes).sort((a,b) => b-a);
+            if (activeSelectMode === 'product') {
+                if(confirm("Permanently delete selected products?")) { indexes.forEach(i => products.splice(i, 1)); saveData(); exitSelectionMode(); }
+            } else if (activeSelectMode === 'history') {
+                if(confirm("Move selected to Trash?")) { indexes.forEach(i => { trashHistory.push(salesHistory[i]); salesHistory.splice(i, 1); }); saveData(); exitSelectionMode(); }
+            } else if (activeSelectMode === 'trash') {
+                if(confirm("Permanently Delete selected items?")) { indexes.forEach(i => trashHistory.splice(i, 1)); saveData(); exitSelectionMode(); }
+            }
+        }
+
+        function restoreSelectedItems() {
+            if(selectedIndexes.size === 0) return;
+            let indexes = Array.from(selectedIndexes).sort((a,b) => b-a);
+            if(confirm("Restore selected invoices?")) { indexes.forEach(i => { salesHistory.push(trashHistory[i]); trashHistory.splice(i, 1); }); saveData(); exitSelectionMode(); }
+        }
+
+        // --- NEW SALE & DIRECT ENTRY ---
+        function openNewSale() {
+            cart = []; activeEditInvoiceIndex = -1; 
+            document.getElementById('sellTitle').innerText = "New Sale";
+            document.getElementById('custName').value = ''; document.getElementById('custPhone').value = ''; 
+            document.getElementById('receivedAmt').value = ''; document.getElementById('upiId').value = '';
+            document.getElementById('searchProductGroup').style.display = 'flex';
+            updateCart(); showSection('addSell');
+        }
+
+        function openAddCreditDirect() {
+            cart = [{ name: "Direct Entry Amount", qty: 1, cartPrice: 0 }];
+            activeEditInvoiceIndex = -1;
+            document.getElementById('sellTitle').innerText = "Direct Entry";
+            document.getElementById('custName').value = ''; document.getElementById('custPhone').value = ''; 
+            document.getElementById('receivedAmt').value = ''; document.getElementById('upiId').value = '';
+            document.getElementById('searchProductGroup').style.display = 'none'; 
+            updateCart(); showSection('addSell');
+        }
+
+        function directEditInvoice(index, e) {
+            stopProp(e); closeAllOptions();
+            const inv = salesHistory[index];
+            activeEditInvoiceIndex = index; // Flag for overwrite
+            cart = [...inv.items];
+            
+            document.getElementById('sellTitle').innerText = "Edit Sale";
+            document.getElementById('custName').value = inv.custName === "Walk-in Customer" ? "" : inv.custName; 
+            document.getElementById('custPhone').value = inv.custPhone || '';
+            document.getElementById('receivedAmt').value = inv.received || '';
+            document.getElementById('upiId').value = inv.upi || '';
+            
+            document.getElementById('searchProductGroup').style.display = (cart.length===1 && cart[0].name==="Direct Entry Amount") ? 'none' : 'flex';
+            updateCart(); showSection('addSell');
+        }
+
+        function directEditProduct(index, e) {
+            stopProp(e); closeOptionsFix();
+            editP(index);
+        }
+
+        // Image Helper
+        function getProductImgHtml(imgSrc, sizeCls="card-img") {
+            if(imgSrc && imgSrc.startsWith('data:image')) return `<img src="${imgSrc}" class="${sizeCls}">`;
+            return `<div class="fallback-icon ${sizeCls}"><i class="fas fa-box-open"></i></div>`;
+        }
+
+        function handleImageUpload(e) {
+            const file = e.target.files[0]; if(!file) return; const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image(); img.onload = function() {
+                    const canvas = document.createElement('canvas'); const size = 150;
+                    canvas.width = size; canvas.height = size; const minRatio = Math.min(img.width, img.height);
+                    canvas.getContext('2d').drawImage(img, (img.width - minRatio) / 2, (img.height - minRatio) / 2, minRatio, minRatio, 0, 0, size, size);
+                    base64ImageString = canvas.toDataURL('image/jpeg', 0.6); 
+                    document.getElementById('pImgFallback').style.display = 'none';
+                    document.getElementById('pImgPreview').src = base64ImageString; document.getElementById('pImgPreview').style.display = 'block';
+                }; img.src = event.target.result;
+            }; reader.readAsDataURL(file);
+        }
+
+        // --- PRODUCT LOGIC ---
+        function openAddProductMode() {
+            document.getElementById('productModalTitle').innerText = "Add Product"; document.getElementById('editIndex').value = "-1";
+            document.getElementById('pBarcode').value = ''; document.getElementById('pName').value = ''; document.getElementById('pPrice').value = '';
+            base64ImageString = ""; document.getElementById('pImgFallback').style.display = 'flex'; document.getElementById('pImgPreview').style.display = 'none';
+            showSection('addProductModal');
+        }
+        function saveProduct() {
+            const barcode = document.getElementById('pBarcode').value; const name = document.getElementById('pName').value.trim(); const price = parseFloat(document.getElementById('pPrice').value);
+            const editIndex = parseInt(document.getElementById('editIndex').value);
+            if(!name || isNaN(price)) { alert("Enter valid Name and Price"); return; }
+            const pData = { barcode, name, price, image: base64ImageString };
+            if(editIndex > -1) products[editIndex] = pData; else products.push(pData);
+            saveData(); renderProducts(); showSection('products');
+        }
+        function renderProducts() {
+            const list = document.getElementById('productList'); const q = document.getElementById('searchDirProduct').value.toLowerCase();
+            let filtered = [...products].sort((a,b) => a.name.localeCompare(b.name)).filter(p => p.name.toLowerCase().includes(q));
+            list.innerHTML = filtered.length === 0 ? '<p style="text-align:center;">No products.</p>' : '';
+            filtered.forEach(p => {
+                const idx = products.indexOf(p); const isSelected = selectedIndexes.has(idx) ? 'selected-card' : '';
+                list.innerHTML += `
+                <div class="card ${isSelected}" onmousedown="handleStartPress('product', ${idx})" onmouseup="handleEndPress()" ontouchstart="handleStartPress('product', ${idx})" ontouchend="handleEndPress()" onclick="handleItemClick('product', ${idx}, event)">
+                    ${getProductImgHtml(p.image)}
+                    <div class="card-content">
+                        <h4 style="font-size:14px;">${p.name}</h4><p style="font-size:11px;color:gray;">Code: ${p.barcode||'N/A'}</p><h4 style="color:var(--primary-red);">₹${p.price.toFixed(2)}</h4>
+                    </div>
+                    
+                    <!-- FULL COVERAGE POPUP MENU FOR PRODUCT -->
+                    <div class="card-opts" id="opts-product-${idx}" onclick="stopProp(event)">
+                        <button class="opt-btn" style="color:#0077b6;" onclick="directEditProduct(${idx}, event)"><i class="fas fa-edit"></i></button>
+                        <button class="opt-btn" style="color:var(--primary-red);" onclick="startSelection('product', ${idx}, event)"><i class="fas fa-check-square"></i></button>
+                        <button class="opt-btn" style="color:#333;" onclick="closeOptionsFix(event)"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>`;
+            });
+        }
+        function editP(index) {
+            const p = products[index]; document.getElementById('editIndex').value = index; document.getElementById('productModalTitle').innerText = "Edit Product";
+            document.getElementById('pName').value = p.name; document.getElementById('pPrice').value = p.price; document.getElementById('pBarcode').value = p.barcode || '';
+            base64ImageString = p.image || ""; 
+            if(base64ImageString) { document.getElementById('pImgFallback').style.display = 'none'; document.getElementById('pImgPreview').src = base64ImageString; document.getElementById('pImgPreview').style.display = 'block'; } 
+            else { document.getElementById('pImgFallback').style.display = 'flex'; document.getElementById('pImgPreview').style.display = 'none'; }
+            showSection('addProductModal');
+        }
+
+        // --- CART LOGIC ---
+        function showSuggestions(q) {
+            const box = document.getElementById('suggestions'); box.innerHTML = '';
+            if(!q) { box.style.display = 'none'; return; }
+            let matches = products.filter(p => p.name.toLowerCase().includes(q.toLowerCase()));
+            if(matches.length > 0) {
+                box.style.display = 'block';
+                matches.forEach(p => { box.innerHTML += `<div class="suggestion-item" onclick='addToCart(${JSON.stringify(p)})'>${getProductImgHtml(p.image, '')} <span style="margin-left:10px;">${p.name} - ₹${p.price}</span></div>`; });
+            } else box.style.display = 'none';
+        }
+        function addToCart(p) {
+            const existing = cart.find(item => item.name === p.name);
+            if(existing) existing.qty += 1; else cart.push({ ...p, cartPrice: p.price, qty: 1 });
+            document.getElementById('searchProduct').value=''; document.getElementById('suggestions').style.display='none'; updateCart();
+        }
+        function customQty(index, val) { const newQty = parseInt(val); if(newQty > 0) { cart[index].qty = newQty; updateCart(); } }
+        function customPrice(index, val) { const newPrice = parseFloat(val); if(!isNaN(newPrice) && newPrice >= 0) { cart[index].cartPrice = newPrice; updateCart(); } }
+        
+        function updateCart() {
+            const list = document.getElementById('cartList'); totalAmount = 0;
+            if(cart.length === 0) { list.innerHTML = '<p style="text-align:center;padding:20px;">Cart is empty.</p>'; document.getElementById('cartTotal').innerText="0.00"; calculateDue(); return; }
+            list.innerHTML = '';
+            cart.forEach((item, i) => {
+                const subtotal = item.cartPrice * item.qty; totalAmount += subtotal;
+                list.innerHTML += `<div style="background:#fff; padding:10px; border-radius:6px; margin-bottom:8px; border-left:4px solid var(--primary-red); box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-weight:600;"><span>${i+1}. ${item.name}</span> <i class="fas fa-times" style="color:red; cursor:pointer;" onclick="cart.splice(${i},1); updateCart();"></i></div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div style="display:flex; gap:5px; align-items:center;">
+                            <input type="number" value="${item.qty}" onchange="customQty(${i}, this.value)" style="width:45px; height:30px; text-align:center; margin:0; padding:2px;">
+                            <span style="color:gray;">x ₹</span>
+                            <input type="number" value="${item.cartPrice}" onchange="customPrice(${i}, this.value)" style="width:60px; height:30px; margin:0; padding:2px;">
+                        </div>
+                        <div style="font-weight:700; color:var(--primary-red);">₹${subtotal.toFixed(2)}</div>
+                    </div>
+                </div>`;
+            });
+            document.getElementById('cartTotal').innerText = totalAmount.toFixed(2); calculateDue();
+        }
+        function calculateDue() {
+            let rec = parseFloat(document.getElementById('receivedAmt').value) || 0;
+            let due = totalAmount - rec; document.getElementById('dueAmt').innerText = (due > 0 ? due : 0).toFixed(2);
+        }
+
+        // --- INVOICE GENERATION & SAVING ---
+        function generateInvoice(isHistory, hData = null) {
+            if(!isHistory && cart.length === 0) { alert("Cart is empty!"); return; }
+            let rec = isHistory ? hData.received : (parseFloat(document.getElementById('receivedAmt').value) || 0);
+            let upi = isHistory ? hData.upi : document.getElementById('upiId').value;
+            let total = isHistory ? hData.total : totalAmount;
+            let due = total - rec; due = due > 0 ? due : 0; let status = due > 0 ? 'CREDIT' : 'PAID';
+
+            const data = isHistory ? hData : {
+                custName: document.getElementById('custName').value || "Walk-in Customer", custPhone: document.getElementById('custPhone').value,
+                upi: upi, date: new Date().toLocaleString(), invNo: "BS-" + Math.floor(Math.random() * 99999),
+                items: [...cart], total, received: rec, due, status
+            };
+            document.getElementById('invCustName').innerText = data.custName; document.getElementById('invCustPhone').innerText = data.custPhone;
+            document.getElementById('invDate').innerText = data.date; document.getElementById('invNo').innerText = data.invNo;
+            
+            let tbody = ''; data.items.forEach(p => { tbody += `<tr><td>${p.name}</td><td>${p.qty}</td><td>₹${p.cartPrice}</td><td>₹${p.qty * p.cartPrice}</td></tr>`; });
+            document.getElementById('invoiceTableBody').innerHTML = tbody;
+            document.getElementById('invTotal').innerText = data.total.toFixed(2); document.getElementById('invReceived').innerText = data.received.toFixed(2); document.getElementById('invDue').innerText = data.due.toFixed(2);
+            
+            const wm = document.getElementById('invWatermark'); wm.innerText = data.status; wm.className = `watermark ${data.status === 'PAID' ? 'wm-paid' : 'wm-credit'}`;
+            
+            const qrBox = document.getElementById('qrContainer');
+            if(data.upi) {
+                qrBox.style.display = 'block'; document.getElementById('qrcode').innerHTML = ""; 
+                new QRCode(document.getElementById("qrcode"), { text: `upi://pay?pa=${data.upi}&pn=BholanathStore&am=${data.total}&cu=INR`, width: 100, height: 100 });
+            } else { qrBox.style.display = 'none'; }
+
+            document.getElementById('saveInvoiceBtn').style.display = isHistory ? 'none' : 'block';
+            currentInvoiceData = data; 
+            document.getElementById('bottomNav').style.display = 'none'; document.getElementById('invoiceModal').style.display = 'block'; document.getElementById('invoiceModal').scrollTop = 0;
+        }
+
+        function saveAndCloseInvoice() {
+            if (activeEditInvoiceIndex > -1) {
+                salesHistory[activeEditInvoiceIndex] = currentInvoiceData;
+                activeEditInvoiceIndex = -1;
+            } else { salesHistory.push(currentInvoiceData); }
+            saveData(); closeInvoiceUI(); openNewSale(); showSection('home');
+        }
+        function closeInvoiceUI() { document.getElementById('invoiceModal').style.display='none'; document.getElementById('bottomNav').style.display='flex'; }
+
+        // DIRECT ACTIONS FROM POPUP
+        function directDownloadPDF(index, e) {
+            stopProp(e); closeAllOptions();
+            generateInvoice(true, salesHistory[index]);
+            document.getElementById('invoiceModal').style.visibility = 'hidden';
+            html2pdf().set({margin:0.2, filename:`Inv_${salesHistory[index].invNo}.pdf`, image:{type:'jpeg',quality:1}, html2canvas:{scale:2,scrollY:0}}).from(document.getElementById('printArea')).save().then(() => {
+                document.getElementById('invoiceModal').style.display = 'none';
+                document.getElementById('invoiceModal').style.visibility = 'visible';
+                document.getElementById('bottomNav').style.display = 'flex';
+            });
+        }
+        
+        function directWhatsappShare(isTrash, index, e) {
+            stopProp(e); closeAllOptions();
+            let inv = isTrash ? trashHistory[index] : salesHistory[index];
+            let text = `*Bholanath Store*\nInv: ${inv.invNo}\nStatus: *${inv.status}*\nTotal: ₹${inv.total}\nDue: ₹${inv.due}`;
+            window.open(`https://wa.me/${inv.custPhone?`91${inv.custPhone}`:''}?text=${encodeURIComponent(text)}`);
+        }
+
+        // --- HISTORY & TRASH RENDER ---
+        function switchTab(tab) { currentTab = tab; exitSelectionMode(); document.querySelectorAll('.tab').forEach(t => t.classList.remove('active')); document.getElementById('tab-' + tab).classList.add('active'); renderHistory(); }
+
+        function renderHistory() {
+            const list = document.getElementById('historyList'); const q = document.getElementById('searchHistory').value.toLowerCase();
+            let filtered = salesHistory.slice().reverse();
+            if(currentTab === 'paid') filtered = filtered.filter(s => s.status === 'PAID');
+            if(currentTab === 'credit') filtered = filtered.filter(s => s.status === 'CREDIT');
+            filtered = filtered.filter(s => s.custName.toLowerCase().includes(q) || s.invNo.toLowerCase().includes(q) || s.date.toLowerCase().includes(q));
+
+            list.innerHTML = filtered.length === 0 ? '<p style="text-align:center;">No records.</p>' : '';
+            filtered.forEach((sale) => {
+                const realIndex = salesHistory.indexOf(sale);
+                const isSelected = selectedIndexes.has(realIndex) ? 'selected-card' : '';
+                
+                let html = `
+                <div class="card ${isSelected}" style="border-left:4px solid ${sale.status==='PAID' ? 'var(--green-paid)' : 'var(--primary-red)'}; cursor:pointer;"
+                     onmousedown="handleStartPress('history', ${realIndex})" onmouseup="handleEndPress()" ontouchstart="handleStartPress('history', ${realIndex})" ontouchend="handleEndPress()" onclick="handleItemClick('history', ${realIndex}, event)">
+                    <div class="card-content">
+                        <h4>${sale.custName} <span class="badge ${sale.status==='PAID' ? 'bg-paid' : 'bg-credit'}">${sale.status}</span></h4>
+                        <p style="font-size:11px;color:gray;">${sale.date} | ${sale.invNo}</p>
+                        <h4 style="font-size:14px; margin-top:3px;">Tot: ₹${sale.total} | <span style="color:red;">Due: ₹${sale.due}</span></h4>
+                    </div>
+                    
+                    <!-- FULL COVERAGE POPUP MENU -->
+                    <div class="card-opts" id="opts-history-${realIndex}" onclick="stopProp(event)">
+                        <button class="opt-btn" style="color:#0077b6;" onclick="directEditInvoice(${realIndex}, event)"><i class="fas fa-edit"></i></button>
+                        <button class="opt-btn" style="color:#25D366;" onclick="directWhatsappShare(false, ${realIndex}, event)"><i class="fab fa-whatsapp"></i></button>
+                        <button class="opt-btn" style="color:var(--green-paid);" onclick="directDownloadPDF(${realIndex}, event)"><i class="fas fa-download"></i></button>
+                        <button class="opt-btn" style="color:var(--primary-red);" onclick="startSelection('history', ${realIndex}, event)"><i class="fas fa-check-square"></i></button>
+                        <button class="opt-btn" style="color:#333;" onclick="closeOptionsFix(event)"><i class="fas fa-times"></i></button>
+                    </div>`;
+                    
+                if(sale.status === 'CREDIT') { html += `<button onclick="stopProp(event); openCreditPay(${realIndex})" class="btn-green" style="width:auto; padding:8px; pointer-events:auto; z-index:9;"><i class="fas fa-rupee-sign"></i> Pay</button>`; }
+                html += `</div>`; list.innerHTML += html;
+            });
+        }
+
+        function renderTrash() {
+            const list = document.getElementById('trashList'); const q = document.getElementById('searchTrash').value.toLowerCase();
+            let filtered = trashHistory.slice().reverse();
+            filtered = filtered.filter(s => s.custName.toLowerCase().includes(q) || s.invNo.toLowerCase().includes(q) || s.date.toLowerCase().includes(q));
+
+            list.innerHTML = filtered.length === 0 ? '<p style="text-align:center;">Trash is empty.</p>' : '';
+            filtered.forEach((sale) => {
+                const realIndex = trashHistory.indexOf(sale);
+                const isSelected = selectedIndexes.has(realIndex) ? 'selected-card' : '';
+                
+                list.innerHTML += `
+                <div class="card ${isSelected}" style="border-left:4px solid gray; cursor:pointer;"
+                     onmousedown="handleStartPress('trash', ${realIndex})" onmouseup="handleEndPress()" ontouchstart="handleStartPress('trash', ${realIndex})" ontouchend="handleEndPress()" onclick="handleItemClick('trash', ${realIndex}, event)">
+                    <div class="card-content">
+                        <h4><del>${sale.custName}</del></h4>
+                        <p style="font-size:11px;color:gray;">${sale.date} | ${sale.invNo}</p>
+                        <h4 style="font-size:14px; margin-top:3px; color:gray;">Tot: ₹${sale.total}</h4>
+                    </div>
+                    
+                    <!-- TRASH FULL COVERAGE POPUP MENU -->
+                    <div class="card-opts" id="opts-trash-${realIndex}" onclick="stopProp(event)">
+                        <button class="opt-btn" style="color:var(--green-paid);" onclick="startSelection('trash', ${realIndex}, event)"><i class="fas fa-undo"></i></button>
+                        <button class="opt-btn" style="color:var(--primary-red);" onclick="startSelection('trash', ${realIndex}, event)"><i class="fas fa-check-square"></i></button>
+                        <button class="opt-btn" style="color:#333;" onclick="closeOptionsFix(event)"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>`;
+            });
+        }
+
+        // --- CREDIT PAYMENT ---
+        function openCreditPay(index) {
+            activeCreditEditIndex = index; const sale = salesHistory[index];
+            document.getElementById('cpName').innerText = sale.custName; document.getElementById('cpTotal').innerText = sale.total;
+            document.getElementById('cpAlreadyRec').innerText = sale.received; document.getElementById('cpDue').innerText = sale.due;
+            document.getElementById('cpNewPay').value = ''; document.getElementById('creditPayModal').style.display = 'block';
+        }
+        function submitCreditPayment() {
+            let newPay = parseFloat(document.getElementById('cpNewPay').value); if(isNaN(newPay) || newPay <= 0) return;
+            let sale = salesHistory[activeCreditEditIndex]; sale.received += newPay; sale.due = sale.total - sale.received;
+            if(sale.due <= 0) { sale.due = 0; sale.status = 'PAID'; }
+            saveData(); document.getElementById('creditPayModal').style.display = 'none'; renderHistory();
+        }
+
+        function updateReports() {
+            let tSale=0, tRec=0, tDue=0; salesHistory.forEach(s => { tSale+=s.total; tRec+=s.received; tDue+=s.due; });
+            document.getElementById('repTotalSales').innerText = tSale.toFixed(2); document.getElementById('repReceived').innerText = tRec.toFixed(2); document.getElementById('repDue').innerText = tDue.toFixed(2);
+        }
+
+        function showSection(id) { 
+            exitSelectionMode(); closeAllOptions();
+            document.querySelectorAll('.section').forEach(s=>s.classList.remove('active')); document.getElementById(id).classList.add('active'); 
+            if(['home','products','reports'].includes(id)) { document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active')); document.getElementById('nav-'+id).classList.add('active'); }
+            if(id === 'trashSec') renderTrash();
+        }
+    </script>
 </body>
 </html>
+
