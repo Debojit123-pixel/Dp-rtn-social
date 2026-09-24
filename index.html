@@ -20,16 +20,15 @@
         :root {
             --bg-color: #f4f6f8; --primary-red: #e63946; --green-paid: #2a9d8f; 
             --orange-credit: #f4a261; --text-dark: #2b2d42; --border-color: #dde2e5;
-            --status-bar-height: 28px;
+            --status-bar-height: 40px; /* Increased height for perfect notch/status bar spacing */
         }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; }
         
-        /* Body Padding for Fixed Status Bar and Bottom Nav */
         body { 
             background-color: var(--bg-color); 
             color: var(--text-dark); 
             padding-top: var(--status-bar-height); 
-            padding-bottom: 70px; 
+            padding-bottom: 75px; 
             overflow-x: hidden; 
             -webkit-tap-highlight-color: transparent; 
         }
@@ -50,7 +49,7 @@
         .nav-btn i { font-size: 20px; margin-bottom: 4px; }
         .nav-btn.active { color: var(--primary-red); }
 
-        .section { display: none; padding: 15px; max-width: 800px; margin: 0 auto; }
+        .section { display: none; padding: 18px 15px; max-width: 800px; margin: 0 auto; }
         .section.active { display: block; }
 
         input, select { width: 100%; padding: 10px 12px; margin-bottom: 12px; border: 1px solid var(--border-color); border-radius: 8px; outline: none; font-size: 14px; background: #fff; }
@@ -75,7 +74,7 @@
         .opt-btn { width: 40px; height: 40px; border-radius: 50%; border: none; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.15); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
         .opt-btn:active { transform: scale(0.9); }
 
-        /* Selection Mode Bar (Appears under Status Bar) */
+        /* Selection Mode Bar */
         .selected-card { background: #fff5f5 !important; border-color: var(--primary-red) !important; transform: scale(0.98); }
         #selectionBar { 
             position: fixed; 
@@ -101,7 +100,7 @@
         .scanner-container { position: relative; width: 100%; max-width: 360px; border-radius: 12px; overflow: hidden; background: #000; box-shadow: 0 5px 20px rgba(230, 57, 70, 0.4); border: 2px solid var(--primary-red); }
         #reader { width: 100%; }
         .scan-laser { width: 100%; height: 2px; background: var(--primary-red); position: absolute; top: 0; left: 0; box-shadow: 0 0 15px 3px var(--primary-red); animation: scan-anim 1.5s infinite linear alternate; z-index: 10; pointer-events: none; }
-        @keyframes scan-anim { 0% { top: 10%; } 100% { top: 90%; } }
+        @keyframes scan-anim { 0% { top: 15%; } 100% { top: 85%; } }
         .scanner-controls { display: flex; gap: 10px; margin-top: 15px; width: 100%; max-width: 360px; }
         .scan-btn { flex: 1; padding: 12px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 14px; }
 
@@ -119,15 +118,15 @@
         
         .suggestions-box { position: absolute; width: 100%; background: #fff; border: 1px solid #ddd; border-radius: 8px; max-height: 200px; overflow-y: auto; z-index: 1000; display: none; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         .suggestion-item { padding: 10px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 10px; cursor: pointer; }
-        #syncIndicator { position: fixed; top: 35px; right: 10px; background: #333; color: #fff; padding: 5px 10px; border-radius: 20px; font-size: 10px; z-index: 9999; display: none; }
+        #syncIndicator { position: fixed; top: 45px; right: 10px; background: #333; color: #fff; padding: 5px 10px; border-radius: 20px; font-size: 10px; z-index: 9999; display: none; }
     </style>
 </head>
 <body onclick="closeAllOptions(event)">
 
-    <!-- Red Top Status Bar Spacer -->
+    <!-- Red Top Status Bar Spacer (Height 40px) -->
     <div id="statusBarSpacer"></div>
 
-    <!-- Selection Bar (Opens directly below status bar) -->
+    <!-- Selection Bar -->
     <div id="selectionBar">
         <div><i class="fas fa-check-circle"></i> <span id="selectionCount">0 Selected</span></div>
         <div id="selectionActions"></div>
@@ -449,21 +448,27 @@
             if(confirm("Restore selected invoices?")) { indexes.forEach(i => { salesHistory.push(trashHistory[i]); trashHistory.splice(i, 1); }); saveData(); exitSelectionMode(); }
         }
 
-        // --- ACCURATE & FAST SCANNER ---
+        // --- REAL & VERIFIED SCANNER LOGIC ---
         let html5QrCode = null;
         let activeScannerMode = '';
         let currentFacingMode = "environment"; 
         let isFlashlightOn = false;
-        let lastScannedText = "";
-        let scanThrottleTimer = null;
+        
+        let candidateText = "";
+        let candidateCount = 0;
+        let isScanningActive = false;
 
         function openScanner(mode) {
             activeScannerMode = mode; 
             isFlashlightOn = false;
-            lastScannedText = "";
+            candidateText = "";
+            candidateCount = 0;
+            isScanningActive = true;
+            
             document.getElementById('customScannerModal').style.display = 'flex';
             
             if(!html5QrCode) {
+                // Focused on real Retail/Product barcode formats only
                 html5QrCode = new Html5Qrcode("reader", {
                     formatsToSupport: [ 
                         Html5QrcodeSupportedFormats.EAN_13,
@@ -477,14 +482,17 @@
             }
             
             const config = {
-                fps: 25, // Optimum speed without frame lag or false positives
-                qrbox: { width: 260, height: 180 },
+                fps: 15, // Perfect balance for sharp and exact frame decode
+                qrbox: (viewfinderWidth, viewfinderHeight) => {
+                    const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+                    return { width: Math.floor(minEdge * 0.85), height: Math.floor(minEdge * 0.5) }; // Rectangular box optimized for barcodes
+                },
                 aspectRatio: 1.333334
             };
 
             html5QrCode.start({ facingMode: currentFacingMode }, config, onScanSuccess, (err)=>{})
             .catch(err => {
-                alert("Camera permission required. Please enable camera in app settings.");
+                alert("Camera permission required. Please enable camera in your settings.");
                 closeScanner();
             });
         }
@@ -506,35 +514,50 @@
         }
 
         function onScanSuccess(decodedText) {
-            if (!decodedText || decodedText === lastScannedText) return;
-            lastScannedText = decodedText;
+            if (!isScanningActive || !decodedText) return;
 
-            // Beep audio indicator
-            try { 
-                const ctx = new (window.AudioContext || window.webkitAudioContext)(); 
-                const osc = ctx.createOscillator(); 
-                osc.type = 'sine'; 
-                osc.frequency.setValueAtTime(900, ctx.currentTime); 
-                osc.connect(ctx.destination); 
-                osc.start(); 
-                osc.stop(ctx.currentTime + 0.12); 
-            } catch(e){}
-            
-            closeScanner();
-            
-            if(activeScannerMode === 'product') {
-                document.getElementById('pBarcode').value = decodedText;
-            } else if(activeScannerMode === 'sell') {
-                const product = products.find(p => p.barcode === decodedText);
-                if(product) { 
-                    addToCart(product); 
-                } else { 
-                    alert("No product found with barcode: " + decodedText); 
+            // Two-frame consistency check to ensure 100% real reading and eliminate false positives
+            if (decodedText === candidateText) {
+                candidateCount++;
+            } else {
+                candidateText = decodedText;
+                candidateCount = 1;
+                return;
+            }
+
+            // Require 2 consecutive matching reads
+            if (candidateCount >= 2) {
+                isScanningActive = false; // Stop further frame processing immediately
+                
+                // Beep audio indicator
+                try { 
+                    const ctx = new (window.AudioContext || window.webkitAudioContext)(); 
+                    const osc = ctx.createOscillator(); 
+                    osc.type = 'sine'; 
+                    osc.frequency.setValueAtTime(1000, ctx.currentTime); 
+                    osc.connect(ctx.destination); 
+                    osc.start(); 
+                    osc.stop(ctx.currentTime + 0.1); 
+                } catch(e){}
+                
+                const verifiedCode = candidateText.trim();
+                closeScanner();
+                
+                if(activeScannerMode === 'product') {
+                    document.getElementById('pBarcode').value = verifiedCode;
+                } else if(activeScannerMode === 'sell') {
+                    const product = products.find(p => p.barcode && p.barcode.trim() === verifiedCode);
+                    if(product) { 
+                        addToCart(product); 
+                    } else { 
+                        alert("Barcode read: " + verifiedCode + "\nNo product found in directory with this barcode."); 
+                    }
                 }
             }
         }
 
         function closeScanner() {
+            isScanningActive = false;
             if(html5QrCode && html5QrCode.getState() === 2) {
                 html5QrCode.stop().then(() => html5QrCode.clear()).catch(()=>{});
             }
@@ -616,7 +639,7 @@
             showSection('addProductModal');
         }
         function saveProduct() {
-            const barcode = document.getElementById('pBarcode').value; const name = document.getElementById('pName').value.trim(); const price = parseFloat(document.getElementById('pPrice').value);
+            const barcode = document.getElementById('pBarcode').value.trim(); const name = document.getElementById('pName').value.trim(); const price = parseFloat(document.getElementById('pPrice').value);
             const editIndex = parseInt(document.getElementById('editIndex').value);
             if(!name || isNaN(price)) { alert("Enter valid Name and Price"); return; }
             const pData = { barcode, name, price, image: base64ImageString };
@@ -843,6 +866,7 @@
     </script>
 </body>
 </html>
+
 
 
 
