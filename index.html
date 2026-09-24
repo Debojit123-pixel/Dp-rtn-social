@@ -319,7 +319,7 @@
             <p style="font-size:14px; font-weight:600;">Total Sales Amount: <span style="color:var(--green-paid);">₹<span id="cdTotalSales">0.00</span></span></p>
         </div>
         <h3>Invoice History</h3>
-        <p style="font-size:11px; color:gray; margin-bottom:10px;">Showing newest to oldest sales for this customer.</p>
+        <p style="font-size:11px; color:gray; margin-bottom:10px;">Showing newest to oldest sales. Tap an invoice to view, share or download.</p>
         <div id="cdHistoryList"></div>
     </div>
 
@@ -564,7 +564,6 @@
             
             if(!name) return alert("Customer Name is required!");
 
-            // Duplicate Phone Check
             if(phone) {
                 let existing = customers.find((c, i) => i !== idx && c.phone === phone);
                 if(existing) {
@@ -578,12 +577,10 @@
             if(idx > -1) {
                 customers[idx].name = name;
                 customers[idx].phone = phone;
-                // Cascading update: update history if name was changed
                 if(oldName && oldName !== name) {
                     salesHistory.forEach(s => { if(s.custName === oldName) s.custName = name; });
                 }
             } else {
-                // Check if totally same name already exists to prevent duplicate exact names
                 let existingName = customers.find(c => c.name.toLowerCase() === name.toLowerCase());
                 if(existingName) return alert("A customer with this exact name already exists!");
                 
@@ -598,7 +595,6 @@
             const list = document.getElementById('customerList'); 
             const q = document.getElementById('searchCustomer').value.toLowerCase();
             
-            // Calculate latest sale and due
             let custStats = {};
             salesHistory.forEach(s => {
                 if(s.custName === "Walk-in Customer") return;
@@ -610,7 +606,6 @@
 
             let filtered = customers.filter(c => c.name.toLowerCase().includes(q) || (c.phone && c.phone.includes(q)));
             
-            // Sort by latest sale (new to old)
             filtered.sort((a, b) => {
                 let tA = custStats[a.name] ? custStats[a.name].lastSale : 0;
                 let tB = custStats[b.name] ? custStats[b.name].lastSale : 0;
@@ -645,29 +640,31 @@
             });
         }
 
-        // Show individual customer invoices
+        // --- NEW UPDATE: CLICKABLE CUSTOMER INVOICES ---
         function showCustomerDetails(idx) {
             let c = customers[idx];
             document.getElementById('cdName').innerText = c.name;
             document.getElementById('cdPhone').innerText = c.phone || 'N/A';
             
-            // Filter sales for this customer and reverse to show New to Old
-            let cSales = salesHistory.filter(s => s.custName === c.name).reverse(); 
-            
             let totalAmount = 0;
             let listHtml = '';
             
-            cSales.forEach(sale => {
-                totalAmount += sale.total;
-                listHtml += `
-                <div class="card" style="border-left:4px solid ${sale.status==='PAID' ? 'var(--green-paid)' : 'var(--primary-red)'}; pointer-events:none;">
-                    <div class="card-content">
-                        <h4>Inv: ${sale.invNo} <span class="badge ${sale.status==='PAID' ? 'bg-paid' : 'bg-credit'}">${sale.status}</span></h4>
-                        <p style="font-size:11px;color:gray;">${sale.date}</p>
-                        <h4 style="font-size:14px; margin-top:3px;">Tot: ₹${sale.total} | <span style="color:red;">Due: ₹${sale.due}</span></h4>
-                    </div>
-                </div>`;
-            });
+            // Loop backwards to show New to Old
+            for (let i = salesHistory.length - 1; i >= 0; i--) {
+                let sale = salesHistory[i];
+                if (sale.custName === c.name) {
+                    totalAmount += sale.total;
+                    listHtml += `
+                    <div class="card" style="border-left:4px solid ${sale.status==='PAID' ? 'var(--green-paid)' : 'var(--primary-red)'}; cursor:pointer;"
+                         onclick="handleItemClick('history', ${i}, event)">
+                        <div class="card-content">
+                            <h4>Inv: ${sale.invNo} <span class="badge ${sale.status==='PAID' ? 'bg-paid' : 'bg-credit'}">${sale.status}</span></h4>
+                            <p style="font-size:11px;color:gray;">${sale.date}</p>
+                            <h4 style="font-size:14px; margin-top:3px;">Tot: ₹${sale.total} | <span style="color:red;">Due: ₹${sale.due}</span></h4>
+                        </div>
+                    </div>`;
+                }
+            }
 
             document.getElementById('cdTotalSales').innerText = totalAmount.toFixed(2);
             document.getElementById('cdHistoryList').innerHTML = listHtml || '<p style="text-align:center; padding:10px;">No sales history found.</p>';
@@ -1542,6 +1539,7 @@
     </script>
 </body>
 </html>
+
 
 
 
