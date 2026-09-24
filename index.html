@@ -20,7 +20,7 @@
         :root {
             --bg-color: #f4f6f8; --primary-red: #e63946; --green-paid: #2a9d8f; 
             --orange-credit: #f4a261; --text-dark: #2b2d42; --border-color: #dde2e5;
-            --status-bar-height: 40px; /* Increased height for perfect notch/status bar spacing */
+            --status-bar-height: 40px;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; }
         
@@ -468,7 +468,6 @@
             document.getElementById('customScannerModal').style.display = 'flex';
             
             if(!html5QrCode) {
-                // Focused on real Retail/Product barcode formats only
                 html5QrCode = new Html5Qrcode("reader", {
                     formatsToSupport: [ 
                         Html5QrcodeSupportedFormats.EAN_13,
@@ -482,10 +481,10 @@
             }
             
             const config = {
-                fps: 15, // Perfect balance for sharp and exact frame decode
+                fps: 15,
                 qrbox: (viewfinderWidth, viewfinderHeight) => {
                     const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-                    return { width: Math.floor(minEdge * 0.85), height: Math.floor(minEdge * 0.5) }; // Rectangular box optimized for barcodes
+                    return { width: Math.floor(minEdge * 0.85), height: Math.floor(minEdge * 0.5) };
                 },
                 aspectRatio: 1.333334
             };
@@ -516,7 +515,6 @@
         function onScanSuccess(decodedText) {
             if (!isScanningActive || !decodedText) return;
 
-            // Two-frame consistency check to ensure 100% real reading and eliminate false positives
             if (decodedText === candidateText) {
                 candidateCount++;
             } else {
@@ -525,11 +523,9 @@
                 return;
             }
 
-            // Require 2 consecutive matching reads
             if (candidateCount >= 2) {
-                isScanningActive = false; // Stop further frame processing immediately
+                isScanningActive = false;
                 
-                // Beep audio indicator
                 try { 
                     const ctx = new (window.AudioContext || window.webkitAudioContext)(); 
                     const osc = ctx.createOscillator(); 
@@ -638,14 +634,40 @@
             base64ImageString = ""; document.getElementById('pImgFallback').style.display = 'flex'; document.getElementById('pImgPreview').style.display = 'none';
             showSection('addProductModal');
         }
+
+        // --- SAVE PRODUCT WITH DUPLICATE CHECK ---
         function saveProduct() {
-            const barcode = document.getElementById('pBarcode').value.trim(); const name = document.getElementById('pName').value.trim(); const price = parseFloat(document.getElementById('pPrice').value);
+            const barcode = document.getElementById('pBarcode').value.trim(); 
+            const name = document.getElementById('pName').value.trim(); 
+            const price = parseFloat(document.getElementById('pPrice').value);
             const editIndex = parseInt(document.getElementById('editIndex').value);
-            if(!name || isNaN(price)) { alert("Enter valid Name and Price"); return; }
+            
+            if(!name || isNaN(price)) { 
+                alert("Enter valid Name and Price"); 
+                return; 
+            }
+
+            // Check Duplicate Product Name
+            const isNameDuplicate = products.some((p, idx) => idx !== editIndex && p.name.trim().toLowerCase() === name.toLowerCase());
+            if(isNameDuplicate) {
+                alert("This product name already exists! Please use a unique name.");
+                return;
+            }
+
+            // Check Duplicate Barcode (if barcode is provided)
+            if(barcode) {
+                const isBarcodeDuplicate = products.some((p, idx) => idx !== editIndex && p.barcode && p.barcode.trim().toLowerCase() === barcode.toLowerCase());
+                if(isBarcodeDuplicate) {
+                    alert("This barcode is already assigned to another product!");
+                    return;
+                }
+            }
+
             const pData = { barcode, name, price, image: base64ImageString };
             if(editIndex > -1) products[editIndex] = pData; else products.push(pData);
             saveData(); renderProducts(); showSection('products');
         }
+
         function renderProducts() {
             const list = document.getElementById('productList'); const q = document.getElementById('searchDirProduct').value.toLowerCase();
             let filtered = [...products].sort((a,b) => a.name.localeCompare(b.name)).filter(p => p.name.toLowerCase().includes(q));
@@ -866,6 +888,7 @@
     </script>
 </body>
 </html>
+
 
 
 
