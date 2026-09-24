@@ -319,7 +319,7 @@
             <p style="font-size:14px; font-weight:600;">Total Sales Amount: <span style="color:var(--green-paid);">₹<span id="cdTotalSales">0.00</span></span></p>
         </div>
         <h3>Invoice History</h3>
-        <p style="font-size:11px; color:gray; margin-bottom:10px;">Showing newest to oldest sales. Tap an invoice to view, share or download.</p>
+        <p style="font-size:11px; color:gray; margin-bottom:10px;">Showing newest to oldest. Long press to Edit/Delete.</p>
         <div id="cdHistoryList"></div>
     </div>
 
@@ -429,6 +429,7 @@
         let activeCreditEditIndex = -1;
         let activeEditInvoiceIndex = -1; 
         let base64ImageString = ""; 
+        let currentCustomerDetailIndex = -1; // Global tracker for active customer details
 
         let activeSelectMode = null; 
         let selectedIndexes = new Set();
@@ -476,6 +477,7 @@
                         localStorage.setItem('bs_last_sync', lastSyncTime);
                         renderProducts(); renderHistory(); renderTrash(); updateReports(); 
                         if(document.getElementById('customersSec').classList.contains('active')) renderCustomers();
+                        if(document.getElementById('customerDetailsSec').classList.contains('active')) renderCustomerDetails();
                         showSyncToast("Data synced from cloud!");
                     }
                 }
@@ -572,14 +574,18 @@
                 }
             }
 
-            let oldName = idx > -1 ? customers[idx].name : null;
-
             if(idx > -1) {
+                let oldName = customers[idx].name;
                 customers[idx].name = name;
                 customers[idx].phone = phone;
-                if(oldName && oldName !== name) {
-                    salesHistory.forEach(s => { if(s.custName === oldName) s.custName = name; });
-                }
+                
+                // 100% Sync Phone & Name to all existing Invoices
+                salesHistory.forEach(s => { 
+                    if(s.custName === oldName) {
+                        s.custName = name;
+                        s.custPhone = phone; 
+                    }
+                });
             } else {
                 let existingName = customers.find(c => c.name.toLowerCase() === name.toLowerCase());
                 if(existingName) return alert("A customer with this exact name already exists!");
@@ -640,38 +646,51 @@
             });
         }
 
-        // --- NEW UPDATE: CLICKABLE CUSTOMER INVOICES ---
-        function showCustomerDetails(idx) {
-            let c = customers[idx];
+        function renderCustomerDetails() {
+            if(currentCustomerDetailIndex === -1 || !customers[currentCustomerDetailIndex]) return;
+            let c = customers[currentCustomerDetailIndex];
             document.getElementById('cdName').innerText = c.name;
             document.getElementById('cdPhone').innerText = c.phone || 'N/A';
             
             let totalAmount = 0;
             let listHtml = '';
             
-            // Loop backwards to show New to Old
             for (let i = salesHistory.length - 1; i >= 0; i--) {
                 let sale = salesHistory[i];
                 if (sale.custName === c.name) {
                     totalAmount += sale.total;
+                    const isSelected = selectedIndexes.has(i) ? 'selected-card' : '';
+                    
                     listHtml += `
-                    <div class="card" style="border-left:4px solid ${sale.status==='PAID' ? 'var(--green-paid)' : 'var(--primary-red)'}; cursor:pointer;"
-                         onclick="handleItemClick('history', ${i}, event)">
+                    <div class="card ${isSelected}" style="border-left:4px solid ${sale.status==='PAID' ? 'var(--green-paid)' : 'var(--primary-red)'}; cursor:pointer;"
+                         onmousedown="handleStartPress('cdhistory', ${i})" onmouseup="handleEndPress()" ontouchstart="handleStartPress('cdhistory', ${i})" ontouchend="handleEndPress()" onclick="handleItemClick('cdhistory', ${i}, event)">
                         <div class="card-content">
                             <h4>Inv: ${sale.invNo} <span class="badge ${sale.status==='PAID' ? 'bg-paid' : 'bg-credit'}">${sale.status}</span></h4>
                             <p style="font-size:11px;color:gray;">${sale.date}</p>
                             <h4 style="font-size:14px; margin-top:3px;">Tot: ₹${sale.total} | <span style="color:red;">Due: ₹${sale.due}</span></h4>
                         </div>
-                    </div>`;
+                        <div class="card-opts" id="opts-cdhistory-${i}" onclick="stopProp(event)">
+                            <button class="opt-btn" style="color:#0077b6;" onclick="directEditInvoice(${i}, event)" title="Edit"><i class="fas fa-edit"></i></button>
+                            <button class="opt-btn" style="color:var(--primary-red);" onclick="startSelection('cdhistory', ${i}, event)" title="Select"><i class="fas fa-check-square"></i></button>
+                            <button class="opt-btn" style="color:#333;" onclick="closeOptionsFix(event)" title="Close"><i class="fas fa-times"></i></button>
+                        </div>`;
+                        
+                    if(sale.status === 'CREDIT') { 
+                        listHtml += `<button onclick="stopProp(event); openCreditPay(${i})" class="btn-green" style="width:auto; padding:8px; pointer-events:auto; z-index:9;"><i class="fas fa-rupee-sign"></i> Pay</button>`; 
+                    }
+                    listHtml += `</div>`;
                 }
             }
 
             document.getElementById('cdTotalSales').innerText = totalAmount.toFixed(2);
             document.getElementById('cdHistoryList').innerHTML = listHtml || '<p style="text-align:center; padding:10px;">No sales history found.</p>';
-            
-            showSection('customerDetailsSec');
         }
 
+        function showCustomerDetails(idx) {
+            currentCustomerDetailIndex = idx;
+            renderCustomerDetails();
+            showSection('customerDetailsSec');
+        }
 
         // --- PDF CLOUD HACK LOGIC (AppsGeyser Safe) ---
         function toast(msg, ms) {
@@ -935,7 +954,12 @@
             stopProp(e); closeAllOptions();
             activeSelectMode = type; selectedIndexes.clear(); selectedIndexes.add(index);
             updateSelectionBarUI();
-            if(type === 'history') renderHistory(); else if(type === 'trash') renderTrash(); else if(type === 'product') renderProducts(); else if(type === 'customer') renderCustomers();
+            
+            if(type === 'history') renderHistory(); 
+            else if(type === 'cdhistory') renderCustomerDetails(); 
+            else if(type === 'trash') renderTrash(); 
+            else if(type === 'product') renderProducts(); 
+            else if(type === 'customer') renderCustomers();
         }
         function handleItemClick(type, index, e) {
             if(activeOptionsId) { closeAllOptions(); return; }
@@ -945,10 +969,14 @@
                 if (selectedIndexes.size === 0) exitSelectionMode();
                 else { 
                     updateSelectionBarUI(); 
-                    if(type === 'history') renderHistory(); else if(type === 'trash') renderTrash(); else if(type === 'product') renderProducts(); else if(type === 'customer') renderCustomers();
+                    if(type === 'history') renderHistory(); 
+                    else if(type === 'cdhistory') renderCustomerDetails(); 
+                    else if(type === 'trash') renderTrash(); 
+                    else if(type === 'product') renderProducts(); 
+                    else if(type === 'customer') renderCustomers();
                 }
             } else if (activeSelectMode === null) {
-                if(type === 'history') {
+                if(type === 'history' || type === 'cdhistory') {
                     currentInvoiceData = salesHistory[index];
                     generateInvoice(true, salesHistory[index]);
                 }
@@ -972,14 +1000,20 @@
             activeSelectMode = null; selectedIndexes.clear();
             document.getElementById('selectionBar').classList.remove('show'); document.getElementById('bottomNav').style.display = 'flex';
             renderProducts(); renderHistory(); renderTrash(); renderCustomers();
+            if(document.getElementById('customerDetailsSec').classList.contains('active')) renderCustomerDetails();
         }
+        
         function deleteSelectedItems() {
             if(selectedIndexes.size === 0) return;
             let indexes = Array.from(selectedIndexes).sort((a,b) => b-a);
+            
             if (activeSelectMode === 'product') {
                 if(confirm("Permanently delete selected products?")) { indexes.forEach(i => products.splice(i, 1)); saveData(); exitSelectionMode(); }
-            } else if (activeSelectMode === 'history') {
-                if(confirm("Move selected to Trash?")) { indexes.forEach(i => { trashHistory.push(salesHistory[i]); salesHistory.splice(i, 1); }); saveData(); exitSelectionMode(); }
+            } else if (activeSelectMode === 'history' || activeSelectMode === 'cdhistory') {
+                if(confirm("Move selected to Trash?")) { 
+                    indexes.forEach(i => { trashHistory.push(salesHistory[i]); salesHistory.splice(i, 1); }); 
+                    saveData(); exitSelectionMode(); 
+                }
             } else if (activeSelectMode === 'trash') {
                 if(confirm("Permanently Delete selected items?")) { indexes.forEach(i => trashHistory.splice(i, 1)); saveData(); exitSelectionMode(); }
             } else if (activeSelectMode === 'customer') {
@@ -1162,7 +1196,6 @@
             closePhotoCamera();
         }
 
-        // --- 3:4 IMAGE PROCESSOR (CROP & RESIZE) ---
         function processImageTo3x4(imgSrc) {
             const img = new Image();
             img.onload = function() {
@@ -1515,6 +1548,7 @@
             let sale = salesHistory[activeCreditEditIndex]; sale.received += newPay; sale.due = sale.total - sale.received;
             if(sale.due <= 0) { sale.due = 0; sale.status = 'PAID'; }
             saveData(); document.getElementById('creditPayModal').style.display = 'none'; renderHistory();
+            if(document.getElementById('customerDetailsSec').classList.contains('active')) renderCustomerDetails();
             showSuccessOverlay("Payment Received Successfully!", false);
         }
 
@@ -1535,10 +1569,14 @@
             }
             if(id === 'trashSec') renderTrash();
             if(id === 'customersSec') renderCustomers();
+            if(id === 'customerDetailsSec' && currentCustomerDetailIndex > -1) {
+                if(customers[currentCustomerDetailIndex]) showCustomerDetails(currentCustomerDetailIndex);
+            }
         }
     </script>
 </body>
 </html>
+
 
 
 
