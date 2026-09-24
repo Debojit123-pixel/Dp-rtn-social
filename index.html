@@ -503,7 +503,7 @@
             return "BS-" + String(nextNum).padStart(5, '0');
         }
 
-        // --- SUCCESS ANIMATION & SOUND ENGINE ---
+        // --- SUCCESS ANIMATION & SOUND ENGINE (No Save PDF Button) ---
         function playSuccessSound() {
             try {
                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -1031,7 +1031,7 @@
             document.getElementById('cpNewPay').value = ''; document.getElementById('creditPayModal').style.display = 'block';
         }
         function submitCreditPayment() {
-            let newPay = parseFloat(document.getElementById('cpNewPay').value); if(isNaN(newPay) || newPay <= 0) return;
+            let newPay = parseFloat(document.getElementById('cpNewPay').value); if(isNaN(newPay) || newPay <=0) return;
             let sale = salesHistory[activeCreditEditIndex]; sale.received += newPay; sale.due = sale.total - sale.received;
             if(sale.due <= 0) { sale.due = 0; sale.status = 'PAID'; }
             saveData(); document.getElementById('creditPayModal').style.display = 'none'; renderHistory();
