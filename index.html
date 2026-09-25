@@ -138,7 +138,7 @@
             0% { transform: translateY(20px); opacity: 0; }
             100% { transform: translateY(0); opacity: 1; }
         }
-        #successText { font-size: 24px; font-weight: 700; margin-bottom: 40px; opacity: 0; animation: slideUpFade 0.5s ease 0.2s forwards; }
+        #successText { font-size: 24px; font-weight: 700; margin-bottom: 30px; opacity: 0; animation: slideUpFade 0.5s ease 0.2s forwards; }
         #successActions { display: flex; justify-content: center; width: 100%; max-width: 250px; padding: 0 20px; opacity: 0; animation: slideUpFade 0.5s ease 0.3s forwards; }
         
         .success-btn { width: 100%; padding: 14px; border-radius: 30px; font-weight: bold; font-size: 16px; cursor: pointer; border: 2px solid white; transition: 0.2s; }
@@ -157,17 +157,17 @@
 </head>
 <body onclick="closeAllOptions(event)">
 
-    <!-- PhonePe Style Full Screen Success Overlay -->
-    <div id="successOverlay">
-        <button id="successCloseBtn" onclick="closeSuccessOverlay()"><i class="fas fa-times"></i></button>
+    <!-- PhonePe Style Full Screen Success Overlay (Tap anywhere to close) -->
+    <div id="successOverlay" onclick="handleSuccessOverlayTap()">
+        <button id="successCloseBtn" onclick="stopProp(event); closeSuccessOverlay()"><i class="fas fa-times"></i></button>
         <div class="check-circle"><i class="fas fa-check"></i></div>
         <h2 id="successText">Success!</h2>
-        <div id="successActions">
+        <div id="successActions" onclick="stopProp(event)">
             <button class="success-btn success-btn-solid" onclick="viewFromSuccess()">View Invoice</button>
         </div>
     </div>
 
-    <!-- UPDATE: Status Bar text added here -->
+    <!-- Status Bar Spacer -->
     <div id="statusBarSpacer">Dp frz</div>
 
     <div id="selectionBar">
@@ -199,7 +199,6 @@
             <button class="btn-red" style="width: auto; padding: 6px 12px; background:#333;" onclick="showSection('home')">Back</button>
         </div>
         <div style="background:#fff; padding:10px; border-radius:8px; margin-bottom:15px; border-left:3px solid var(--green-paid); box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-            
             <div style="position:relative;">
                 <input type="text" id="custName" placeholder="Customer Name" style="margin-bottom:8px;" oninput="showCustomerSuggestions(this.value)" autocomplete="off">
                 <div id="custSuggestions" class="suggestions-box" style="top: 42px;"></div>
@@ -251,7 +250,6 @@
             <input type="file" id="pImageInputGallery" accept="image/*" style="display: none;" onchange="handleImageUpload(event)">
             
             <div style="display:flex; gap:10px; justify-content:center;">
-                <!-- Call Custom Camera for Photo Capture -->
                 <button class="btn-blue" style="width:auto; padding:6px 12px;" onclick="openPhotoCamera()"><i class="fas fa-camera"></i> Camera</button>
                 <button class="btn-gray" style="width:auto; padding:6px 12px;" onclick="document.getElementById('pImageInputGallery').click()"><i class="fas fa-image"></i> Gallery</button>
             </div>
@@ -439,6 +437,7 @@
         let pressTimer = null;
         let isPressing = false;
         let activeOptionsId = null; 
+        let successAutoTimer = null; // Timer for auto-closing overlay
 
         // --- RELIABLE HTTPS SECURE MQTT SYNC ENGINE ---
         const mqttDataTopic = 'bholanath_store_pos_data_assam_2026';
@@ -521,6 +520,70 @@
             if(isMqttConnected) { showSyncToast("Syncing to cloud..."); broadcastCloudData(); }
         }
 
+        // --- SUCCESS ANIMATION & SOUND ENGINE (UPDATED) ---
+        function playSuccessSound() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                function playNote(freq, type, startTime, duration, vol) {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain); gain.connect(ctx.destination);
+                    osc.type = type; osc.frequency.setValueAtTime(freq, startTime);
+                    gain.gain.setValueAtTime(0, startTime);
+                    gain.gain.linearRampToValueAtTime(vol, startTime + 0.02);
+                    gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+                    osc.start(startTime); osc.stop(startTime + duration);
+                }
+                const now = ctx.currentTime;
+                playNote(987.77, 'sine', now, 0.4, 0.6); 
+                playNote(1318.51, 'sine', now + 0.12, 0.6, 0.6); 
+            } catch(e){}
+        }
+
+        function showSuccessOverlay(msg, isSale) {
+            clearTimeout(successAutoTimer);
+            document.getElementById('successText').innerText = msg;
+            const overlay = document.getElementById('successOverlay');
+            const closeBtn = document.getElementById('successCloseBtn');
+            const actions = document.getElementById('successActions');
+            
+            if(isSale) {
+                closeBtn.style.display = 'block';
+                actions.style.display = 'flex'; // Only show View Invoice button on sales
+            } else {
+                closeBtn.style.display = 'none';
+                actions.style.display = 'none'; // Hide button on product add / payment update
+                // Auto close in 2.5 seconds
+                successAutoTimer = setTimeout(() => { closeSuccessOverlay(); }, 2500);
+            }
+            
+            overlay.style.display = 'flex';
+            setTimeout(() => { overlay.style.opacity = '1'; }, 10);
+            playSuccessSound();
+        }
+
+        function handleSuccessOverlayTap() {
+            // Tap anywhere to close immediately if not in New Sale mode
+            const actions = document.getElementById('successActions');
+            if (actions.style.display === 'none') {
+                closeSuccessOverlay();
+            }
+        }
+
+        function closeSuccessOverlay() {
+            clearTimeout(successAutoTimer);
+            const overlay = document.getElementById('successOverlay');
+            overlay.style.opacity = '0'; 
+            setTimeout(() => { overlay.style.display = 'none'; }, 300);
+        }
+
+        function viewFromSuccess() {
+            closeSuccessOverlay();
+            generateInvoice(true, currentInvoiceData);
+            document.getElementById('saveInvoiceBtn').style.display = 'none';
+        }
+
+        // --- CUSTOMER LOGIC & RENDER ---
         function showCustomerSuggestions(q) {
             const box = document.getElementById('custSuggestions'); box.innerHTML = '';
             if(!q) { box.style.display = 'none'; return; }
@@ -873,54 +936,6 @@
             });
             let nextNum = maxNum > 0 ? maxNum + 1 : 1001;
             return "BS-" + String(nextNum).padStart(5, '0');
-        }
-
-        function playSuccessSound() {
-            try {
-                const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                function playNote(freq, type, startTime, duration, vol) {
-                    const osc = ctx.createOscillator();
-                    const gain = ctx.createGain();
-                    osc.connect(gain); gain.connect(ctx.destination);
-                    osc.type = type; osc.frequency.setValueAtTime(freq, startTime);
-                    gain.gain.setValueAtTime(0, startTime);
-                    gain.gain.linearRampToValueAtTime(vol, startTime + 0.02);
-                    gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-                    osc.start(startTime); osc.stop(startTime + duration);
-                }
-                const now = ctx.currentTime;
-                playNote(987.77, 'sine', now, 0.4, 0.6); 
-                playNote(1318.51, 'sine', now + 0.12, 0.6, 0.6); 
-            } catch(e){}
-        }
-
-        function showSuccessOverlay(msg, isSale) {
-            document.getElementById('successText').innerText = msg;
-            const overlay = document.getElementById('successOverlay');
-            const closeBtn = document.getElementById('successCloseBtn');
-            
-            if(isSale) {
-                closeBtn.style.display = 'block';
-            } else {
-                closeBtn.style.display = 'none';
-                setTimeout(() => { closeSuccessOverlay(); }, 2000);
-            }
-            
-            overlay.style.display = 'flex';
-            setTimeout(() => { overlay.style.opacity = '1'; }, 10);
-            playSuccessSound();
-        }
-
-        function closeSuccessOverlay() {
-            const overlay = document.getElementById('successOverlay');
-            overlay.style.opacity = '0'; 
-            setTimeout(() => { overlay.style.display = 'none'; }, 300);
-        }
-
-        function viewFromSuccess() {
-            closeSuccessOverlay();
-            generateInvoice(true, currentInvoiceData);
-            document.getElementById('saveInvoiceBtn').style.display = 'none';
         }
 
         function stopProp(e) { if(e) { e.preventDefault(); e.stopPropagation(); } }
@@ -1328,7 +1343,7 @@
             saveData(); 
             renderProducts(); 
             showSection('products');
-            showSuccessOverlay("Product Added Successfully!", false);
+            showSuccessOverlay("Product Added Successfully!", false); // Will not show View Invoice button
         }
 
         function renderProducts() {
@@ -1465,7 +1480,7 @@
             document.getElementById('bottomNav').style.display='flex';
             showSection('home');
             
-            showSuccessOverlay("Payment Successful!", true);
+            showSuccessOverlay("Payment Successful!", true); // Will show View Invoice button
 
             cart = []; 
             document.getElementById('custName').value = ''; document.getElementById('custPhone').value = ''; 
@@ -1549,7 +1564,7 @@
             if(sale.due <= 0) { sale.due = 0; sale.status = 'PAID'; }
             saveData(); document.getElementById('creditPayModal').style.display = 'none'; renderHistory();
             if(document.getElementById('customerDetailsSec').classList.contains('active')) renderCustomerDetails();
-            showSuccessOverlay("Payment Received Successfully!", false);
+            showSuccessOverlay("Payment Received Successfully!", false); // Auto closes, no view invoice
         }
 
         function updateReports() {
@@ -1576,6 +1591,7 @@
     </script>
 </body>
 </html>
+
 
 
 
