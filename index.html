@@ -167,7 +167,7 @@
         </div>
     </div>
 
-    <!-- Status Bar Spacer -->
+    <!-- Status Bar -->
     <div id="statusBarSpacer">Dp frz</div>
 
     <div id="selectionBar">
@@ -207,7 +207,7 @@
         </div>
         
         <div style="display:flex; gap:8px; position:relative;" id="searchProductGroup">
-            <input type="text" id="searchProduct" placeholder="Search product..." oninput="showProductSuggestions(this.value)" style="flex:1;">
+            <input type="text" id="searchProduct" placeholder="Search product..." oninput="showProductSuggestions(this.value)" style="flex:1;" autocomplete="off">
             <button class="btn-red" style="width:45px; height:42px; padding:0;" onclick="openScanner('sell')"><i class="fas fa-barcode"></i></button>
             <button class="btn-gray" id="btnDirectEntry" style="width:45px; height:42px; padding:0; background:#f4a261; display:none;" onclick="addDirectAmountItem()" title="Direct Amount Entry"><i class="fas fa-keyboard"></i></button>
             <div id="suggestions" class="suggestions-box" style="top:42px;"></div>
@@ -348,12 +348,14 @@
                 <div><strong>To:</strong> <span id="invCustName"></span><br><span id="invCustPhone"></span></div>
                 <div style="text-align: right;"><strong>Date:</strong> <span id="invDate"></span><br><strong>Inv:</strong> <span id="invNo"></span></div>
             </div>
+            
             <table class="invoice-table">
                 <thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
                 <tbody id="invoiceTableBody"></tbody>
             </table>
+            
             <div style="margin-top: 15px; border-top: 1px solid #ccc; padding-top: 10px; font-size:13px;">
-                <div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>Total Amount:</span> <strong>₹<span id="invTotal">0.00</span></strong></div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>Sub Total:</span> <strong>₹<span id="invTotal">0.00</span></strong></div>
                 <div style="display:flex; justify-content:space-between; margin-bottom:5px; color:var(--green-paid);"><span>Received:</span> <strong>₹<span id="invReceived">0.00</span></strong></div>
                 <div style="display:flex; justify-content:space-between; font-size:15px; color:var(--primary-red);"><span>Due (Credit):</span> <strong>₹<span id="invDue">0.00</span></strong></div>
             </div>
@@ -362,9 +364,14 @@
                 <div id="qrcode" style="display:flex; justify-content:center;"></div>
             </div>
         </div>
+        
         <div style="padding: 20px; display:flex; flex-direction:column; gap:10px;">
-            <button class="btn-green" onclick="shareOnWhatsApp()"><i class="fab fa-whatsapp"></i> WhatsApp Share</button>
-            <button class="btn-blue" onclick="downloadInvoicePDF()"><i class="fas fa-file-pdf"></i> Download PDF (Cloud Hack)</button>
+            <!-- NEW: Checklist Mode Buttons -->
+            <button class="btn-gray" id="btnToggleChecklist" onclick="toggleChecklistMode()"><i class="fas fa-tasks"></i> Modify Items (Checklist)</button>
+            <button class="btn-red" id="btnSaveChecklist" style="display:none; background:#ffb703; color:#000;" onclick="saveChecklistChanges()"><i class="fas fa-save"></i> Save Changes</button>
+            
+            <button class="btn-green" id="btnWaShare" onclick="shareOnWhatsApp()"><i class="fab fa-whatsapp"></i> WhatsApp Share</button>
+            <button class="btn-blue" id="btnPdfDownload" onclick="downloadInvoicePDF()"><i class="fas fa-file-pdf"></i> Download PDF (Cloud Hack)</button>
             <button class="btn-red" id="saveInvoiceBtn" onclick="saveAndCloseInvoice()"><i class="fas fa-check-circle"></i> Save & Done</button>
         </div>
     </div>
@@ -431,13 +438,14 @@
         let activeEditInvoiceIndex = -1; 
         let base64ImageString = ""; 
         let currentCustomerDetailIndex = -1;
+        let isChecklistMode = false; // State for new Checklist feature
 
         let activeSelectMode = null; 
         let selectedIndexes = new Set();
         let pressTimer = null;
         let isPressing = false;
         let activeOptionsId = null; 
-        let successAutoTimer = null; // Timer for auto-closing overlay
+        let successAutoTimer = null; 
 
         // --- RELIABLE HTTPS SECURE MQTT SYNC ENGINE ---
         const mqttDataTopic = 'bholanath_store_pos_data_assam_2026';
@@ -520,7 +528,7 @@
             if(isMqttConnected) { showSyncToast("Syncing to cloud..."); broadcastCloudData(); }
         }
 
-        // --- SUCCESS ANIMATION & SOUND ENGINE (UPDATED) ---
+        // --- SUCCESS ANIMATION & SOUND ENGINE ---
         function playSuccessSound() {
             try {
                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -549,11 +557,10 @@
             
             if(isSale) {
                 closeBtn.style.display = 'block';
-                actions.style.display = 'flex'; // Only show View Invoice button on sales
+                actions.style.display = 'flex'; 
             } else {
                 closeBtn.style.display = 'none';
-                actions.style.display = 'none'; // Hide button on product add / payment update
-                // Auto close in 2.5 seconds
+                actions.style.display = 'none'; 
                 successAutoTimer = setTimeout(() => { closeSuccessOverlay(); }, 2500);
             }
             
@@ -563,11 +570,8 @@
         }
 
         function handleSuccessOverlayTap() {
-            // Tap anywhere to close immediately if not in New Sale mode
             const actions = document.getElementById('successActions');
-            if (actions.style.display === 'none') {
-                closeSuccessOverlay();
-            }
+            if (actions.style.display === 'none') closeSuccessOverlay();
         }
 
         function closeSuccessOverlay() {
@@ -592,13 +596,19 @@
             if(matches.length > 0) {
                 box.style.display = 'block';
                 matches.forEach(c => { 
-                    box.innerHTML += `<div class="suggestion-item" onclick="selectCustomer('${c.name}', '${c.phone||''}')">
+                    let idx = customers.indexOf(c);
+                    box.innerHTML += `<div class="suggestion-item" onclick="selectCustomerByIndex(${idx})">
                         <i class="fas fa-user" style="color:gray;"></i> <span>${c.name} ${c.phone ? ' - '+c.phone : ''}</span>
                     </div>`; 
                 });
             } else {
                 box.style.display = 'none';
             }
+        }
+
+        // BUG FIX: Secure function call replacing JSON injection
+        window.selectCustomerByIndex = function(idx) {
+            selectCustomer(customers[idx].name, customers[idx].phone || '');
         }
 
         function selectCustomer(name, phone) {
@@ -755,6 +765,109 @@
             showSection('customerDetailsSec'); 
         }
 
+        // --- NEW: INVOICE CHECKLIST LOGIC ---
+        function toggleChecklistMode() {
+            isChecklistMode = !isChecklistMode;
+            renderInvoiceItemsTable();
+            
+            document.getElementById('btnToggleChecklist').style.display = isChecklistMode ? 'none' : 'block';
+            document.getElementById('btnSaveChecklist').style.display = isChecklistMode ? 'block' : 'none';
+            
+            // Hide export buttons while in edit mode
+            document.getElementById('btnWaShare').style.display = isChecklistMode ? 'none' : 'block';
+            document.getElementById('btnPdfDownload').style.display = isChecklistMode ? 'none' : 'block';
+            
+            let saveDoneBtn = document.getElementById('saveInvoiceBtn');
+            if (!saveDoneBtn.dataset.origDisplay) saveDoneBtn.dataset.origDisplay = saveDoneBtn.style.display;
+            saveDoneBtn.style.display = isChecklistMode ? 'none' : saveDoneBtn.dataset.origDisplay;
+        }
+
+        function renderInvoiceItemsTable() {
+            let tbody = '';
+            currentInvoiceData.items.forEach((p, i) => { 
+                let chk = isChecklistMode ? `<input type="checkbox" id="chkItem_${i}" checked onchange="recalcChecklist()" style="width:16px; height:16px; margin-right:8px; vertical-align:middle; accent-color:var(--primary-red);">` : '';
+                tbody += `<tr><td>${chk}<span id="itemName_${i}">${p.name}</span></td><td>${p.qty}</td><td>₹${p.cartPrice}</td><td>₹${p.qty * p.cartPrice}</td></tr>`; 
+            });
+            document.getElementById('invoiceTableBody').innerHTML = tbody;
+            
+            document.getElementById('invTotal').innerText = currentInvoiceData.total.toFixed(2);
+            document.getElementById('invReceived').innerText = currentInvoiceData.received.toFixed(2);
+            document.getElementById('invDue').innerText = currentInvoiceData.due.toFixed(2);
+            
+            const wm = document.getElementById('invWatermark');
+            wm.innerText = currentInvoiceData.status;
+            wm.className = `watermark ${currentInvoiceData.status === 'PAID' ? 'wm-paid' : 'wm-credit'}`;
+        }
+
+        function recalcChecklist() {
+            let newTotal = 0;
+            currentInvoiceData.items.forEach((p, i) => {
+                let cb = document.getElementById(`chkItem_${i}`);
+                let nameSpan = document.getElementById(`itemName_${i}`);
+                if(cb && cb.checked) {
+                    newTotal += (p.qty * p.cartPrice);
+                    nameSpan.style.textDecoration = 'none';
+                    nameSpan.style.color = 'inherit';
+                } else if(cb && !cb.checked) {
+                    nameSpan.style.textDecoration = 'line-through';
+                    nameSpan.style.color = 'gray';
+                }
+            });
+            
+            let rec = currentInvoiceData.received;
+            let newDue = newTotal - rec;
+            newDue = newDue > 0 ? newDue : 0;
+            
+            document.getElementById('invTotal').innerText = newTotal.toFixed(2);
+            document.getElementById('invDue').innerText = newDue.toFixed(2);
+            
+            let wm = document.getElementById('invWatermark');
+            let newStatus = newDue > 0 ? 'CREDIT' : 'PAID';
+            wm.innerText = newStatus;
+            wm.className = `watermark ${newStatus === 'PAID' ? 'wm-paid' : 'wm-credit'}`;
+        }
+
+        function saveChecklistChanges() {
+            if(!confirm("Modify this invoice? Unchecked items will be removed permanently.")) return;
+            
+            let newItems = [];
+            let newTotal = 0;
+            currentInvoiceData.items.forEach((p, i) => {
+                let cb = document.getElementById(`chkItem_${i}`);
+                if(cb && cb.checked) {
+                    newItems.push(p);
+                    newTotal += (p.qty * p.cartPrice);
+                }
+            });
+            
+            if(newItems.length === 0) {
+                alert("Cannot save an empty invoice!");
+                return;
+            }
+
+            currentInvoiceData.items = newItems;
+            currentInvoiceData.total = newTotal;
+            
+            let due = newTotal - currentInvoiceData.received;
+            currentInvoiceData.due = due > 0 ? due : 0;
+            currentInvoiceData.status = currentInvoiceData.due > 0 ? 'CREDIT' : 'PAID';
+            
+            let historyIndex = salesHistory.findIndex(s => s.invNo === currentInvoiceData.invNo);
+            if(historyIndex > -1) {
+                salesHistory[historyIndex] = currentInvoiceData;
+            }
+            
+            saveData();
+            isChecklistMode = false;
+            
+            // Re-render views dynamically
+            if(document.getElementById('home').classList.contains('active')) renderHistory();
+            if(document.getElementById('customerDetailsSec').classList.contains('active')) renderCustomerDetails();
+            
+            prepareInvoiceDOM(currentInvoiceData);
+            alert("Invoice updated successfully!");
+        }
+
         // --- PDF CLOUD HACK LOGIC (AppsGeyser Safe) ---
         function toast(msg, ms) {
             let t = document.getElementById('pdfToast');
@@ -814,7 +927,7 @@
 
         window.downloadInvoicePDF = async function () {
             if(!currentInvoiceData) return;
-            prepareInvoiceDOM(currentInvoiceData);
+            prepareInvoiceDOM(currentInvoiceData); // Ensure clean state before PDF
 
             let el = document.getElementById('printArea');
             let name = 'Invoice_' + currentInvoiceData.invNo + '.pdf';
@@ -862,30 +975,31 @@
         };
 
         function prepareInvoiceDOM(invData) {
-            document.getElementById('invCustName').innerText = invData.custName;
-            document.getElementById('invCustPhone').innerText = invData.custPhone || '';
-            document.getElementById('invDate').innerText = invData.date;
-            document.getElementById('invNo').innerText = invData.invNo;
+            // Deep copy to allow unsaved checklist modifications safely
+            currentInvoiceData = JSON.parse(JSON.stringify(invData)); 
+            isChecklistMode = false;
             
-            let tbody = '';
-            invData.items.forEach(p => { 
-                tbody += `<tr><td>${p.name}</td><td>${p.qty}</td><td>₹${p.cartPrice}</td><td>₹${p.qty * p.cartPrice}</td></tr>`; 
-            });
-            document.getElementById('invoiceTableBody').innerHTML = tbody;
-            document.getElementById('invTotal').innerText = invData.total.toFixed(2);
-            document.getElementById('invReceived').innerText = invData.received.toFixed(2);
-            document.getElementById('invDue').innerText = invData.due.toFixed(2);
+            document.getElementById('invCustName').innerText = currentInvoiceData.custName;
+            document.getElementById('invCustPhone').innerText = currentInvoiceData.custPhone || '';
+            document.getElementById('invDate').innerText = currentInvoiceData.date;
+            document.getElementById('invNo').innerText = currentInvoiceData.invNo;
             
-            const wm = document.getElementById('invWatermark');
-            wm.innerText = invData.status;
-            wm.className = `watermark ${invData.status === 'PAID' ? 'wm-paid' : 'wm-credit'}`;
+            renderInvoiceItemsTable();
+            
+            // Reset buttons UI
+            document.getElementById('btnToggleChecklist').style.display = 'block';
+            document.getElementById('btnSaveChecklist').style.display = 'none';
+            document.getElementById('btnWaShare').style.display = 'block';
+            document.getElementById('btnPdfDownload').style.display = 'block';
+            let saveDoneBtn = document.getElementById('saveInvoiceBtn');
+            if (saveDoneBtn.dataset.origDisplay) saveDoneBtn.style.display = saveDoneBtn.dataset.origDisplay;
             
             const qrBox = document.getElementById('qrContainer');
-            if(invData.upi) {
+            if(currentInvoiceData.upi) {
                 qrBox.style.display = 'block'; 
                 document.getElementById('qrcode').innerHTML = ""; 
                 new QRCode(document.getElementById("qrcode"), { 
-                    text: `upi://pay?pa=${invData.upi}&pn=BholanathStore&am=${invData.total}&cu=INR`, 
+                    text: `upi://pay?pa=${currentInvoiceData.upi}&pn=BholanathStore&am=${currentInvoiceData.total}&cu=INR`, 
                     width: 100, height: 100 
                 });
             } else { 
@@ -992,8 +1106,12 @@
                 }
             } else if (activeSelectMode === null) {
                 if(type === 'history' || type === 'cdhistory') {
-                    currentInvoiceData = salesHistory[index];
-                    generateInvoice(true, salesHistory[index]);
+                    // Safe injection into the modal
+                    prepareInvoiceDOM(salesHistory[index]);
+                    document.getElementById('saveInvoiceBtn').style.display = 'none';
+                    document.getElementById('bottomNav').style.display = 'none'; 
+                    document.getElementById('invoiceModal').style.display = 'block'; 
+                    document.getElementById('invoiceModal').scrollTop = 0;
                 }
                 if(type === 'product') editP(index);
                 if(type === 'customer') showCustomerDetails(index);
@@ -1343,7 +1461,7 @@
             saveData(); 
             renderProducts(); 
             showSection('products');
-            showSuccessOverlay("Product Added Successfully!", false); // Will not show View Invoice button
+            showSuccessOverlay("Product Added Successfully!", false);
         }
 
         function renderProducts() {
@@ -1377,20 +1495,30 @@
             showSection('addProductModal');
         }
 
+        // BUG FIX: Secure function call replacing JSON injection for Products
+        window.addSuggestedProduct = function(idx) {
+            addToCart(products[idx]);
+            document.getElementById('searchProduct').value=''; 
+            document.getElementById('suggestions').style.display='none'; 
+        }
+
         function showProductSuggestions(q) {
             const box = document.getElementById('suggestions'); box.innerHTML = '';
             if(!q) { box.style.display = 'none'; return; }
             let matches = products.filter(p => p.name.toLowerCase().includes(q.toLowerCase()));
             if(matches.length > 0) {
                 box.style.display = 'block';
-                matches.forEach(p => { box.innerHTML += `<div class="suggestion-item" onclick='addToCart(${JSON.stringify(p)})'>${getProductImgHtml(p.image, '')} <span style="margin-left:10px;">${p.name} - ₹${p.price}</span></div>`; });
+                matches.forEach(p => { 
+                    let idx = products.indexOf(p);
+                    box.innerHTML += `<div class="suggestion-item" onclick="addSuggestedProduct(${idx})">${getProductImgHtml(p.image, '')} <span style="margin-left:10px;">${p.name} - ₹${p.price}</span></div>`; 
+                });
             } else box.style.display = 'none';
         }
 
         function addToCart(p) {
             const existing = cart.find(item => item.name === p.name);
             if(existing) existing.qty += 1; else cart.push({ ...p, cartPrice: p.price, qty: 1 });
-            document.getElementById('searchProduct').value=''; document.getElementById('suggestions').style.display='none'; updateCart();
+            updateCart();
         }
         function customQty(index, val) { const newQty = parseInt(val); if(newQty > 0) { cart[index].qty = newQty; updateCart(); } }
         function customPrice(index, val) { const newPrice = parseFloat(val); if(!isNaN(newPrice) && newPrice >= 0) { cart[index].cartPrice = newPrice; updateCart(); } }
@@ -1451,9 +1579,13 @@
             };
             prepareInvoiceDOM(data);
 
-            document.getElementById('saveInvoiceBtn').style.display = isHistory ? 'none' : 'block';
-            currentInvoiceData = data; 
-            document.getElementById('bottomNav').style.display = 'none'; document.getElementById('invoiceModal').style.display = 'block'; document.getElementById('invoiceModal').scrollTop = 0;
+            let saveBtn = document.getElementById('saveInvoiceBtn');
+            saveBtn.style.display = isHistory ? 'none' : 'block';
+            saveBtn.dataset.origDisplay = saveBtn.style.display;
+
+            document.getElementById('bottomNav').style.display = 'none'; 
+            document.getElementById('invoiceModal').style.display = 'block'; 
+            document.getElementById('invoiceModal').scrollTop = 0;
         }
 
         function saveAndCloseInvoice() {
@@ -1480,7 +1612,7 @@
             document.getElementById('bottomNav').style.display='flex';
             showSection('home');
             
-            showSuccessOverlay("Payment Successful!", true); // Will show View Invoice button
+            showSuccessOverlay("Payment Successful!", true); 
 
             cart = []; 
             document.getElementById('custName').value = ''; document.getElementById('custPhone').value = ''; 
@@ -1564,7 +1696,7 @@
             if(sale.due <= 0) { sale.due = 0; sale.status = 'PAID'; }
             saveData(); document.getElementById('creditPayModal').style.display = 'none'; renderHistory();
             if(document.getElementById('customerDetailsSec').classList.contains('active')) renderCustomerDetails();
-            showSuccessOverlay("Payment Received Successfully!", false); // Auto closes, no view invoice
+            showSuccessOverlay("Payment Received Successfully!", false); 
         }
 
         function updateReports() {
@@ -1591,6 +1723,7 @@
     </script>
 </body>
 </html>
+
 
 
 
