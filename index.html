@@ -14,7 +14,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
 
     <style>
         :root {
@@ -175,7 +174,7 @@
         <div id="selectionActions"></div>
     </div>
 
-    <div id="syncIndicator"><i class="fas fa-sync fa-spin"></i> Connecting Cloud...</div>
+    <div id="syncIndicator"><i class="fas fa-sync fa-spin"></i> Connecting Firebase...</div>
 
     <!-- HOME SECTION -->
     <div id="home" class="section active">
@@ -185,7 +184,7 @@
         </div>
         <input type="text" id="searchHistory" placeholder="Search by Name, Date, or Inv No..." oninput="renderHistory()">
         
-        <!-- NEW: Invoice Counter Display -->
+        <!-- Invoice Counter Display -->
         <div style="font-size:12px; font-weight:600; color:gray; margin-bottom:8px; padding:0 5px;">
             Total Invoices: <span id="invoiceCountDisplay" style="color:var(--primary-red);">0</span>
         </div>
@@ -238,7 +237,7 @@
         <h2>Products Directory</h2>
         <input type="text" id="searchDirProduct" placeholder="Search product..." oninput="renderProducts()">
         
-        <!-- NEW: Product Counter Display -->
+        <!-- Product Counter Display -->
         <div style="font-size:12px; font-weight:600; color:gray; margin-bottom:8px; padding:0 5px;">
             Total Products: <span id="productCountDisplay" style="color:var(--primary-red);">0</span>
         </div>
@@ -293,7 +292,8 @@
             <button class="btn-blue" style="width: 100%;" onclick="forceSyncPull()"><i class="fas fa-sync"></i> Refresh Cloud Data</button>
         </div>
         
-        <p id="cloudStatusText" style="font-size:12px; color:#2a9d8f; margin-top:15px; text-align:center; font-weight:600;"><i class="fas fa-circle" style="font-size:8px;"></i> Checking Cloud Connection...</p>
+        <!-- CLOUD STATUS UI -->
+        <p id="cloudStatusText" style="font-size:12px; color:#2a9d8f; margin-top:15px; text-align:center; font-weight:600;"><i class="fas fa-circle" style="font-size:8px;"></i> Checking Cloud...</p>
     </div>
 
     <!-- CUSTOMERS LIST SECTION -->
@@ -306,7 +306,7 @@
         <p style="font-size:11px; color:gray; margin-bottom:10px;">Sorted by latest transaction. Long press to Edit/Delete.</p>
         <input type="text" id="searchCustomer" placeholder="Search by Name or Phone..." oninput="renderCustomers()">
         
-        <!-- NEW: Customer Counter Display -->
+        <!-- Customer Counter Display -->
         <div style="font-size:12px; font-weight:600; color:gray; margin-bottom:8px; padding:0 5px;">
             Total Customers: <span id="customerCountDisplay" style="color:var(--primary-red);">0</span>
         </div>
@@ -442,10 +442,12 @@
     </div>
 
     <script>
+        // --- DATA INITIALIZATION ---
         let products = JSON.parse(localStorage.getItem('bs_products')) || [];
         let salesHistory = JSON.parse(localStorage.getItem('bs_sales')) || [];
         let trashHistory = JSON.parse(localStorage.getItem('bs_trash')) || [];
         let customers = JSON.parse(localStorage.getItem('bs_customers')) || []; 
+        let lastSyncTime = parseInt(localStorage.getItem('bs_last_sync')) || 0;
         
         let cart = []; 
         let totalAmount = 0;
@@ -464,87 +466,122 @@
         let activeOptionsId = null; 
         let successAutoTimer = null; 
 
-        // --- RELIABLE HTTPS SECURE MQTT SYNC ENGINE ---
-        const mqttDataTopic = 'bholanath_store_pos_data_assam_2026';
-        const mqttReqTopic  = 'bholanath_store_pos_req_assam_2026';
-        const clientId = 'pos_' + Math.random().toString(16).substr(2, 8);
-        let lastSyncTime = parseInt(localStorage.getItem('bs_last_sync')) || 0;
-        let isMqttConnected = false;
-        
-        const mqttClient = mqtt.connect('wss://broker.emqx.io:8084/mqtt', { 
-            clientId: clientId, keepalive: 60, reconnectPeriod: 3000, clean: true
-        });
+        // --- NEW FIREBASE REST API (LIGHTWEIGHT & FAST) ---
+        const FIREBASE_URL = 'https://bholanath-store-default-rtdb.firebaseio.com/pos_data.json';
+        let isSyncing = false;
 
-        mqttClient.on('connect', () => { 
-            isMqttConnected = true; updateCloudStatusUI(true);
-            mqttClient.subscribe(mqttDataTopic); mqttClient.subscribe(mqttReqTopic);
-            mqttClient.publish(mqttReqTopic, JSON.stringify({ sender: clientId }));
-        });
-        mqttClient.on('reconnect', () => { updateCloudStatusUI(false, "Reconnecting..."); });
-        mqttClient.on('close', () => { isMqttConnected = false; updateCloudStatusUI(false); });
-        mqttClient.on('error', (err) => { isMqttConnected = false; updateCloudStatusUI(false); });
+        function updateCloudStatusUI(connected, customMsg="") {
+            const statusEl = document.getElementById('cloudStatusText'); 
+            if(!statusEl) return;
+            if(connected) {
+                statusEl.style.color = "#2a9d8f"; 
+                statusEl.innerHTML = `<i class="fas fa-circle" style="font-size:8px;"></i> ${customMsg || "Firebase: Synced Successfully"}`;
+            } else {
+                statusEl.style.color = "#e63946"; 
+                statusEl.innerHTML = `<i class="fas fa-circle" style="font-size:8px;"></i> ${customMsg || "Firebase: Offline"}`;
+            }
+        }
 
-        mqttClient.on('message', (topic, message) => {
+        function showSyncToast(msg) {
+            const ind = document.getElementById('syncIndicator'); 
+            ind.innerHTML = `<i class="fas fa-sync fa-spin"></i> ${msg}`;
+            ind.style.display = 'block'; 
+            setTimeout(() => { ind.style.display = 'none'; }, 2000);
+        }
+
+        function refreshAllViews() {
+            renderProducts(); renderHistory(); renderTrash(); updateReports(); 
+            if(document.getElementById('customersSec').classList.contains('active')) renderCustomers();
+            if(document.getElementById('customerDetailsSec').classList.contains('active')) renderCustomerDetails();
+        }
+
+        // Fetch data from Firebase
+        async function fetchFromFirebase(isManual = false) {
+            if(isManual) showSyncToast("Refreshing from Firebase...");
+            updateCloudStatusUI(false, "Connecting Firebase...");
             try {
-                if (topic === mqttReqTopic) {
-                    const req = JSON.parse(message.toString());
-                    if (req.sender !== clientId && (products.length > 0 || salesHistory.length > 0 || customers.length > 0)) { broadcastCloudData(); }
-                    return;
-                }
-                if (topic === mqttDataTopic) {
-                    const data = JSON.parse(message.toString());
-                    if (data.sender !== clientId && data.timestamp && data.timestamp > lastSyncTime) {
-                        products = data.products || []; salesHistory = data.salesHistory || []; trashHistory = data.trashHistory || [];
-                        customers = data.customers || customers; 
+                const response = await fetch(FIREBASE_URL);
+                if(!response.ok) throw new Error("Network Error");
+                const data = await response.json();
+                
+                if (data && data.timestamp) {
+                    if (data.timestamp > lastSyncTime && data.products.length >= products.length) {
+                        products = data.products || [];
+                        salesHistory = data.salesHistory || [];
+                        trashHistory = data.trashHistory || [];
+                        customers = data.customers || [];
                         lastSyncTime = data.timestamp;
+                        
                         localStorage.setItem('bs_products', JSON.stringify(products)); 
                         localStorage.setItem('bs_sales', JSON.stringify(salesHistory));
                         localStorage.setItem('bs_trash', JSON.stringify(trashHistory)); 
                         localStorage.setItem('bs_customers', JSON.stringify(customers));
                         localStorage.setItem('bs_last_sync', lastSyncTime);
-                        renderProducts(); renderHistory(); renderTrash(); updateReports(); 
-                        if(document.getElementById('customersSec').classList.contains('active')) renderCustomers();
-                        if(document.getElementById('customerDetailsSec').classList.contains('active')) renderCustomerDetails();
-                        showSyncToast("Data synced from cloud!");
+                        
+                        refreshAllViews();
+                        updateCloudStatusUI(true, "Firebase: Synced Successfully");
+                        if(isManual) showSyncToast("Data loaded from Cloud!");
+                    } else if (lastSyncTime > data.timestamp || products.length > (data.products ? data.products.length : 0)) {
+                        syncToFirebase();
+                    } else {
+                        updateCloudStatusUI(true, "Firebase: Synced Successfully");
                     }
+                } else if (!data && (products.length > 0 || salesHistory.length > 0 || customers.length > 0)) {
+                    syncToFirebase();
+                } else {
+                    updateCloudStatusUI(true, "Firebase: Connected (Empty)");
                 }
-            } catch(e) {}
-        });
-
-        function updateCloudStatusUI(connected, customMsg="") {
-            const statusEl = document.getElementById('cloudStatusText'); if(!statusEl) return;
-            if(connected) {
-                statusEl.style.color = "#2a9d8f"; statusEl.innerHTML = `<i class="fas fa-circle" style="font-size:8px;"></i> Cloud Live Sync: Connected`;
-            } else {
-                statusEl.style.color = "#e63946"; statusEl.innerHTML = `<i class="fas fa-circle" style="font-size:8px;"></i> Cloud Status: ${customMsg || "Connecting..."}`;
+            } catch(e) {
+                updateCloudStatusUI(false, "Firebase Offline / Error");
+                if(isManual) showSyncToast("Failed to connect Firebase");
             }
         }
-        function broadcastCloudData() {
-            if(!isMqttConnected) return;
-            const payload = JSON.stringify({ products, salesHistory, trashHistory, customers, timestamp: lastSyncTime, sender: clientId });
-            mqttClient.publish(mqttDataTopic, payload, { retain: true, qos: 0 });
-        }
-        function forceSyncPull() {
-            if(isMqttConnected) {
-                showSyncToast("Refreshing from Cloud..."); broadcastCloudData();
-                mqttClient.publish(mqttReqTopic, JSON.stringify({ sender: clientId }));
-            } else { showSyncToast("Reconnecting to Cloud..."); mqttClient.reconnect(); }
-        }
-        function showSyncToast(msg) {
-            const ind = document.getElementById('syncIndicator'); ind.innerHTML = `<i class="fas fa-sync fa-spin"></i> ${msg}`;
-            ind.style.display = 'block'; setTimeout(() => { ind.style.display = 'none'; }, 2000);
+
+        // Upload data to Firebase
+        async function syncToFirebase() {
+            if(isSyncing) return;
+            isSyncing = true;
+            updateCloudStatusUI(false, "Syncing to Firebase...");
+            try {
+                const payload = { products, salesHistory, trashHistory, customers, timestamp: lastSyncTime };
+                const response = await fetch(FIREBASE_URL, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if(response.ok) {
+                    updateCloudStatusUI(true, "Firebase: Synced Successfully");
+                } else {
+                    updateCloudStatusUI(false, "Firebase Sync Failed");
+                }
+            } catch(e) {
+                updateCloudStatusUI(false, "Saved Locally (Offline)");
+            }
+            isSyncing = false;
         }
 
-        window.onload = () => { renderProducts(); renderHistory(); updateReports(); }
+        function forceSyncPull() {
+            fetchFromFirebase(true);
+        }
+
+        window.onload = () => { 
+            refreshAllViews(); 
+            fetchFromFirebase(); 
+        }
 
         function saveData() {
-            localStorage.setItem('bs_products', JSON.stringify(products)); localStorage.setItem('bs_sales', JSON.stringify(salesHistory));
-            localStorage.setItem('bs_trash', JSON.stringify(trashHistory)); localStorage.setItem('bs_customers', JSON.stringify(customers));
-            lastSyncTime = Date.now(); localStorage.setItem('bs_last_sync', lastSyncTime);
+            localStorage.setItem('bs_products', JSON.stringify(products)); 
+            localStorage.setItem('bs_sales', JSON.stringify(salesHistory));
+            localStorage.setItem('bs_trash', JSON.stringify(trashHistory)); 
+            localStorage.setItem('bs_customers', JSON.stringify(customers));
+            lastSyncTime = Date.now(); 
+            localStorage.setItem('bs_last_sync', lastSyncTime);
             updateReports();
-            if(isMqttConnected) { showSyncToast("Syncing to cloud..."); broadcastCloudData(); }
+            syncToFirebase(); 
         }
 
+        // --- SUCCESS ANIMATION & SOUND ENGINE ---
         function playSuccessSound() {
             try {
                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -603,6 +640,7 @@
             document.getElementById('saveInvoiceBtn').style.display = 'none';
         }
 
+        // --- CUSTOMER LOGIC & RENDER ---
         function showCustomerSuggestions(q) {
             const box = document.getElementById('custSuggestions'); box.innerHTML = '';
             if(!q) { box.style.display = 'none'; return; }
@@ -706,7 +744,6 @@
                 return tB - tA; 
             });
 
-            // Update Counter
             let countDisp = document.getElementById('customerCountDisplay');
             if(countDisp) countDisp.innerText = filtered.length;
 
@@ -1478,7 +1515,6 @@
             const list = document.getElementById('productList'); const q = document.getElementById('searchDirProduct').value.toLowerCase();
             let filtered = [...products].sort((a,b) => a.name.localeCompare(b.name)).filter(p => p.name.toLowerCase().includes(q));
             
-            // Update Counter
             let countDisp = document.getElementById('productCountDisplay');
             if(countDisp) countDisp.innerText = filtered.length;
 
@@ -1645,7 +1681,6 @@
             if(currentTab === 'credit') filtered = filtered.filter(s => s.status === 'CREDIT');
             filtered = filtered.filter(s => s.custName.toLowerCase().includes(q) || s.invNo.toLowerCase().includes(q) || s.date.toLowerCase().includes(q));
 
-            // Update Counter
             let countDisp = document.getElementById('invoiceCountDisplay');
             if(countDisp) countDisp.innerText = filtered.length;
 
@@ -1741,6 +1776,7 @@
     </script>
 </body>
 </html>
+
 
 
 
