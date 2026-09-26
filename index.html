@@ -167,7 +167,7 @@
         </div>
     </div>
 
-    <!-- Status Bar -->
+    <!-- Status Bar Spacer -->
     <div id="statusBarSpacer">Dp frz</div>
 
     <div id="selectionBar">
@@ -184,6 +184,12 @@
             <button class="btn-blue" style="flex:1; background:var(--orange-credit);" onclick="openAddCreditDirect()"><i class="fas fa-hand-holding-usd"></i> Add Credit</button>
         </div>
         <input type="text" id="searchHistory" placeholder="Search by Name, Date, or Inv No..." oninput="renderHistory()">
+        
+        <!-- NEW: Invoice Counter Display -->
+        <div style="font-size:12px; font-weight:600; color:gray; margin-bottom:8px; padding:0 5px;">
+            Total Invoices: <span id="invoiceCountDisplay" style="color:var(--primary-red);">0</span>
+        </div>
+
         <div class="tabs">
             <div class="tab active" onclick="switchTab('all')" id="tab-all">All</div>
             <div class="tab" onclick="switchTab('paid')" id="tab-paid">Paid</div>
@@ -231,6 +237,12 @@
     <div id="products" class="section">
         <h2>Products Directory</h2>
         <input type="text" id="searchDirProduct" placeholder="Search product..." oninput="renderProducts()">
+        
+        <!-- NEW: Product Counter Display -->
+        <div style="font-size:12px; font-weight:600; color:gray; margin-bottom:8px; padding:0 5px;">
+            Total Products: <span id="productCountDisplay" style="color:var(--primary-red);">0</span>
+        </div>
+
         <button class="btn-red" style="margin-bottom: 15px;" onclick="openAddProductMode()"><i class="fas fa-plus"></i> Add Product</button>
         <div id="productList"></div>
     </div>
@@ -293,6 +305,12 @@
         <button class="btn-red" style="margin-bottom: 15px;" onclick="openAddCustomerModal()"><i class="fas fa-user-plus"></i> Add New Customer</button>
         <p style="font-size:11px; color:gray; margin-bottom:10px;">Sorted by latest transaction. Long press to Edit/Delete.</p>
         <input type="text" id="searchCustomer" placeholder="Search by Name or Phone..." oninput="renderCustomers()">
+        
+        <!-- NEW: Customer Counter Display -->
+        <div style="font-size:12px; font-weight:600; color:gray; margin-bottom:8px; padding:0 5px;">
+            Total Customers: <span id="customerCountDisplay" style="color:var(--primary-red);">0</span>
+        </div>
+
         <div id="customerList"></div>
     </div>
 
@@ -366,7 +384,6 @@
         </div>
         
         <div style="padding: 20px; display:flex; flex-direction:column; gap:10px;">
-            <!-- NEW: Checklist Mode Buttons -->
             <button class="btn-gray" id="btnToggleChecklist" onclick="toggleChecklistMode()"><i class="fas fa-tasks"></i> Modify Items (Checklist)</button>
             <button class="btn-red" id="btnSaveChecklist" style="display:none; background:#ffb703; color:#000;" onclick="saveChecklistChanges()"><i class="fas fa-save"></i> Save Changes</button>
             
@@ -438,7 +455,7 @@
         let activeEditInvoiceIndex = -1; 
         let base64ImageString = ""; 
         let currentCustomerDetailIndex = -1;
-        let isChecklistMode = false; // State for new Checklist feature
+        let isChecklistMode = false; 
 
         let activeSelectMode = null; 
         let selectedIndexes = new Set();
@@ -528,7 +545,6 @@
             if(isMqttConnected) { showSyncToast("Syncing to cloud..."); broadcastCloudData(); }
         }
 
-        // --- SUCCESS ANIMATION & SOUND ENGINE ---
         function playSuccessSound() {
             try {
                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -587,7 +603,6 @@
             document.getElementById('saveInvoiceBtn').style.display = 'none';
         }
 
-        // --- CUSTOMER LOGIC & RENDER ---
         function showCustomerSuggestions(q) {
             const box = document.getElementById('custSuggestions'); box.innerHTML = '';
             if(!q) { box.style.display = 'none'; return; }
@@ -606,7 +621,6 @@
             }
         }
 
-        // BUG FIX: Secure function call replacing JSON injection
         window.selectCustomerByIndex = function(idx) {
             selectCustomer(customers[idx].name, customers[idx].phone || '');
         }
@@ -692,6 +706,10 @@
                 return tB - tA; 
             });
 
+            // Update Counter
+            let countDisp = document.getElementById('customerCountDisplay');
+            if(countDisp) countDisp.innerText = filtered.length;
+
             list.innerHTML = filtered.length === 0 ? '<p style="text-align:center;">No customers found.</p>' : '';
             
             filtered.forEach(c => {
@@ -765,7 +783,6 @@
             showSection('customerDetailsSec'); 
         }
 
-        // --- NEW: INVOICE CHECKLIST LOGIC ---
         function toggleChecklistMode() {
             isChecklistMode = !isChecklistMode;
             renderInvoiceItemsTable();
@@ -773,7 +790,6 @@
             document.getElementById('btnToggleChecklist').style.display = isChecklistMode ? 'none' : 'block';
             document.getElementById('btnSaveChecklist').style.display = isChecklistMode ? 'block' : 'none';
             
-            // Hide export buttons while in edit mode
             document.getElementById('btnWaShare').style.display = isChecklistMode ? 'none' : 'block';
             document.getElementById('btnPdfDownload').style.display = isChecklistMode ? 'none' : 'block';
             
@@ -860,7 +876,6 @@
             saveData();
             isChecklistMode = false;
             
-            // Re-render views dynamically
             if(document.getElementById('home').classList.contains('active')) renderHistory();
             if(document.getElementById('customerDetailsSec').classList.contains('active')) renderCustomerDetails();
             
@@ -868,7 +883,6 @@
             alert("Invoice updated successfully!");
         }
 
-        // --- PDF CLOUD HACK LOGIC (AppsGeyser Safe) ---
         function toast(msg, ms) {
             let t = document.getElementById('pdfToast');
             if (!t) {
@@ -927,7 +941,7 @@
 
         window.downloadInvoicePDF = async function () {
             if(!currentInvoiceData) return;
-            prepareInvoiceDOM(currentInvoiceData); // Ensure clean state before PDF
+            prepareInvoiceDOM(currentInvoiceData);
 
             let el = document.getElementById('printArea');
             let name = 'Invoice_' + currentInvoiceData.invNo + '.pdf';
@@ -975,7 +989,6 @@
         };
 
         function prepareInvoiceDOM(invData) {
-            // Deep copy to allow unsaved checklist modifications safely
             currentInvoiceData = JSON.parse(JSON.stringify(invData)); 
             isChecklistMode = false;
             
@@ -986,7 +999,6 @@
             
             renderInvoiceItemsTable();
             
-            // Reset buttons UI
             document.getElementById('btnToggleChecklist').style.display = 'block';
             document.getElementById('btnSaveChecklist').style.display = 'none';
             document.getElementById('btnWaShare').style.display = 'block';
@@ -1007,7 +1019,6 @@
             }
         }
 
-        // --- UPDATED WHATSAPP SHARE (FULL INVOICE DETAILS) ---
         function shareOnWhatsApp() {
             if(!currentInvoiceData) return;
             let inv = currentInvoiceData;
@@ -1106,7 +1117,6 @@
                 }
             } else if (activeSelectMode === null) {
                 if(type === 'history' || type === 'cdhistory') {
-                    // Safe injection into the modal
                     prepareInvoiceDOM(salesHistory[index]);
                     document.getElementById('saveInvoiceBtn').style.display = 'none';
                     document.getElementById('bottomNav').style.display = 'none'; 
@@ -1467,6 +1477,11 @@
         function renderProducts() {
             const list = document.getElementById('productList'); const q = document.getElementById('searchDirProduct').value.toLowerCase();
             let filtered = [...products].sort((a,b) => a.name.localeCompare(b.name)).filter(p => p.name.toLowerCase().includes(q));
+            
+            // Update Counter
+            let countDisp = document.getElementById('productCountDisplay');
+            if(countDisp) countDisp.innerText = filtered.length;
+
             list.innerHTML = filtered.length === 0 ? '<p style="text-align:center;">No products.</p>' : '';
             filtered.forEach(p => {
                 const idx = products.indexOf(p); const isSelected = selectedIndexes.has(idx) ? 'selected-card' : '';
@@ -1495,7 +1510,6 @@
             showSection('addProductModal');
         }
 
-        // BUG FIX: Secure function call replacing JSON injection for Products
         window.addSuggestedProduct = function(idx) {
             addToCart(products[idx]);
             document.getElementById('searchProduct').value=''; 
@@ -1631,6 +1645,10 @@
             if(currentTab === 'credit') filtered = filtered.filter(s => s.status === 'CREDIT');
             filtered = filtered.filter(s => s.custName.toLowerCase().includes(q) || s.invNo.toLowerCase().includes(q) || s.date.toLowerCase().includes(q));
 
+            // Update Counter
+            let countDisp = document.getElementById('invoiceCountDisplay');
+            if(countDisp) countDisp.innerText = filtered.length;
+
             list.innerHTML = filtered.length === 0 ? '<p style="text-align:center;">No records.</p>' : '';
             filtered.forEach((sale) => {
                 const realIndex = salesHistory.indexOf(sale);
@@ -1723,6 +1741,7 @@
     </script>
 </body>
 </html>
+
 
 
 
