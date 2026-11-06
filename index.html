@@ -1,1810 +1,332 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Bholanath Store POS</title>
-    <meta name="theme-color" content="#e63946">
-    
-    <!-- Google Fonts & Icons -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HS 1st Year Commerce - Study Portal</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Scripts -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <script src="https://unpkg.com/html5-qrcode"></script>
-
     <style>
+        /* Base Styles */
         :root {
-            --bg-color: #f4f6f8; --primary-red: #e63946; --green-paid: #2a9d8f; 
-            --orange-credit: #f4a261; --text-dark: #2b2d42; --border-color: #dde2e5;
-            --status-bar-height: 40px;
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #f59e0b;
+            --bg-color: #f3f4f6;
+            --text-main: #1f2937;
+            --text-light: #6b7280;
+            --card-bg: #ffffff;
         }
-        /* Added touch-action manipulation to remove 300ms click delay on mobile */
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; touch-action: manipulation; }
         
-        body { 
-            background-color: var(--bg-color); 
-            color: var(--text-dark); 
-            padding-top: var(--status-bar-height); 
-            padding-bottom: 75px; 
-            overflow-x: hidden; 
-            -webkit-tap-highlight-color: transparent; 
-        }
-
-        #statusBarSpacer {
-            position: fixed; top: 0; left: 0; width: 100%;
-            height: var(--status-bar-height); background: var(--primary-red); z-index: 100000;
-            display: flex; align-items: center; justify-content: center;
-            color: white; font-weight: bold; font-size: 16px; letter-spacing: 1px;
-        }
-
-        .navbar { background: #fff; display: flex; justify-content: space-around; padding: 8px 0; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); position: fixed; bottom: 0; width: 100%; z-index: 100; }
-        .nav-btn { background: none; border: none; font-size: 11px; font-weight: 600; color: #888; cursor: pointer; display: flex; flex-direction: column; align-items: center; flex: 1; }
-        .nav-btn i { font-size: 20px; margin-bottom: 4px; }
-        .nav-btn.active { color: var(--primary-red); }
-
-        .section { display: none; padding: 18px 15px; max-width: 800px; margin: 0 auto; }
-        .section.active { display: block; }
-
-        input, select { width: 100%; padding: 10px 12px; margin-bottom: 12px; border: 1px solid var(--border-color); border-radius: 8px; outline: none; font-size: 14px; background: #fff; }
-        input:focus { border-color: var(--primary-red); }
-        .btn-red, .btn-green, .btn-blue, .btn-gray { color: #fff; border: none; padding: 12px 15px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: 0.2s; width: 100%; }
-        .btn-red { background: var(--primary-red); } .btn-green { background: var(--green-paid); } .btn-blue { background: #0077b6; } .btn-gray { background: #6c757d; }
-
-        .tabs { display: flex; background: #fff; border-radius: 8px; margin-bottom: 15px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .tab { flex: 1; text-align: center; padding: 10px; font-weight: 600; font-size: 13px; cursor: pointer; border-bottom: 2px solid transparent; color: #666; }
-        .tab.active { color: var(--primary-red); border-bottom: 2px solid var(--primary-red); background: #fff5f5; }
-
-        .card { background: #fff; padding: 12px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 10px; transition: 0.2s; position: relative; overflow: hidden; user-select: none; -webkit-touch-callout: none; border: 2px solid transparent; }
-        .card-img { width: 45px; height: 60px; border-radius: 6px; object-fit: cover; }
-        .fallback-icon { width: 45px; height: 60px; border-radius: 6px; background: #e2e8f0; color: #a0aec0; display: flex; align-items: center; justify-content: center; font-size: 22px; }
-        .card-content { flex: 1; pointer-events: none; }
-        .badge { padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; color: #fff; }
-        .bg-paid { background: var(--green-paid); } .bg-credit { background: var(--primary-red); }
-
-        .card-opts { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.95); display: flex; align-items: center; justify-content: space-evenly; opacity: 0; pointer-events: none; transition: opacity 0.2s ease; z-index: 10; backdrop-filter: blur(2px); }
-        .card-opts.show { opacity: 1; pointer-events: auto; }
-        .opt-btn { width: 42px; height: 42px; border-radius: 50%; border: none; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.15); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
-        .opt-btn:active { transform: scale(0.9); }
-
-        .selected-card { background: #fff5f5 !important; border-color: var(--primary-red) !important; transform: scale(0.98); }
-        #selectionBar { position: fixed; top: var(--status-bar-height); left: 0; width: 100%; background: #d62828; color: white; display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; z-index: 99999; transform: translateY(-100%); transition: transform 0.3s ease; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
-        #selectionBar.show { transform: translateY(0); }
-        #selectionBar button { background: none; border: none; color: white; font-size: 18px; margin-left: 20px; cursor: pointer; }
-
-        /* BARCODE SCANNER */
-        #customScannerModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); z-index: 100001; justify-content: center; align-items: center; flex-direction: column; padding: 15px; }
-        .scanner-container { position: relative; width: 100%; max-width: 360px; border-radius: 12px; overflow: hidden; background: #000; box-shadow: 0 5px 20px rgba(230, 57, 70, 0.4); border: 2px solid var(--primary-red); }
-        #reader { width: 100%; }
-        .scan-laser { width: 100%; height: 2px; background: var(--primary-red); position: absolute; top: 0; left: 0; box-shadow: 0 0 15px 3px var(--primary-red); animation: scan-anim 1.5s infinite linear alternate; z-index: 10; pointer-events: none; }
-        @keyframes scan-anim { 0% { top: 15%; } 100% { top: 85%; } }
-        .scanner-controls { display: flex; gap: 10px; margin-top: 15px; width: 100%; max-width: 360px; }
-        .scan-btn { flex: 1; padding: 12px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 14px; }
-
-        /* NATIVE CAMERA MODAL FOR PHOTOS */
-        #photoCameraModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 100005; flex-direction: column; justify-content: center; align-items: center; }
-        #photoVideo { width: 100%; height: 80%; object-fit: cover; background: #111; }
-        .photo-controls { display: flex; justify-content: space-around; align-items: center; height: 20%; width: 100%; background: #000; padding: 10px; }
-
-        #invoiceModal, #creditPayModal { display: none; position: fixed; top: var(--status-bar-height); left: 0; width: 100%; height: calc(100% - var(--status-bar-height)); background: #fff; z-index: 5000; overflow-y: auto; }
-        .top-bar { background: #fff; padding: 12px 15px; display: flex; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 5001; }
-        .top-bar button { background: none; border: none; font-size: 16px; font-weight: 600; color: var(--text-dark); display: flex; gap: 8px; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); }
         
-        #printArea { padding: 20px; max-width: 600px; margin: 0 auto; background: #fff; position: relative; overflow: hidden; }
-        .watermark { position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); font-size: 60px; font-weight: 800; opacity: 0.1; letter-spacing: 5px; border: 5px solid; padding: 10px 20px; border-radius: 10px; pointer-events: none; }
-        .wm-paid { color: var(--green-paid); border-color: var(--green-paid); } .wm-credit { color: var(--primary-red); border-color: var(--primary-red); }
-        .invoice-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
-        .invoice-table th, .invoice-table td { padding: 8px 5px; border-bottom: 1px solid #eee; text-align: left; }
-        .invoice-table th { background: #f8f9fa; font-weight: 600; }
-        
-        .suggestions-box { position: absolute; width: 100%; background: #fff; border: 1px solid #ddd; border-radius: 8px; max-height: 200px; overflow-y: auto; z-index: 1000; display: none; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .suggestion-item { padding: 10px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13px; }
-        .suggestion-item:hover { background: #f8f9fa; }
-        
-        #syncIndicator { position: fixed; top: 45px; right: 10px; background: #222; color: #fff; padding: 6px 14px; border-radius: 20px; font-size: 11px; z-index: 9999; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.3); font-weight: 500; }
+        /* Header */
+        header { background: var(--primary); color: white; padding: 1rem 5%; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        header h1 { font-size: 1.5rem; font-weight: 600; }
+        .login-btn { background: rgba(255,255,255,0.2); border: none; color: white; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 500; transition: 0.3s; }
+        .login-btn:hover { background: rgba(255,255,255,0.3); }
 
-        /* --- PHONEPE STYLE SUCCESS OVERLAY CSS --- */
-        #successOverlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #2a9d8f; z-index: 999999;
-            display: none; flex-direction: column; align-items: center; justify-content: center;
-            color: white; text-align: center;
-            opacity: 0; transition: opacity 0.3s ease;
-        }
-        .check-circle {
-            width: 100px; height: 100px; border-radius: 50%; background: white;
-            display: flex; align-items: center; justify-content: center; 
-            margin-bottom: 25px; 
-            box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.5);
-            animation: pulse-ring 1.5s infinite;
-        }
-        .check-circle i {
-            color: #2a9d8f; font-size: 50px;
-            transform: scale(0);
-            animation: popScale 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.1s forwards;
-        }
-        @keyframes pulse-ring {
-            0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.6); }
-            70% { box-shadow: 0 0 0 20px rgba(255, 255, 255, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
-        }
-        @keyframes popScale {
-            0% { transform: scale(0); }
-            100% { transform: scale(1); }
-        }
-        @keyframes slideUpFade {
-            0% { transform: translateY(20px); opacity: 0; }
-            100% { transform: translateY(0); opacity: 1; }
-        }
-        #successText { font-size: 24px; font-weight: 700; margin-bottom: 30px; opacity: 0; animation: slideUpFade 0.5s ease 0.2s forwards; }
-        #successActions { display: flex; justify-content: center; width: 100%; max-width: 250px; padding: 0 20px; opacity: 0; animation: slideUpFade 0.5s ease 0.3s forwards; }
+        /* Notice Board */
+        .notice-bar { background: var(--secondary); color: white; padding: 10px 5%; font-size: 0.9rem; font-weight: 500; display: flex; align-items: center; gap: 10px; }
+        .notice-bar span { background: white; color: var(--secondary); padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
         
-        .success-btn { width: 100%; padding: 14px; border-radius: 30px; font-weight: bold; font-size: 16px; cursor: pointer; border: 2px solid white; transition: 0.2s; }
-        .success-btn-solid { background: white; color: #2a9d8f; }
-        .success-btn-solid:active { transform: scale(0.95); }
+        /* Main Container */
+        .container { max-width: 1000px; margin: 30px auto; padding: 0 5%; }
         
-        #successCloseBtn { position: absolute; top: 30px; right: 25px; background: none; border: none; color: white; font-size: 32px; cursor: pointer; display: none; opacity: 0.8; transition: 0.2s; }
-        #successCloseBtn:active { transform: scale(0.8); }
+        /* Admin Panel */
+        #admin-panel { display: none; background: var(--card-bg); padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 30px; border-top: 5px solid var(--primary); }
+        .admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .admin-header h2 { color: var(--primary); font-size: 1.3rem; }
+        .logout-btn { background: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+        
+        .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media(max-width: 768px) { .admin-grid { grid-template-columns: 1fr; } }
+        
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 500; font-size: 0.9rem; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; outline: none; font-size: 0.9rem; transition: 0.3s; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+        .btn-submit { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 500; width: 100%; transition: 0.3s; }
+        .btn-submit:hover { background: var(--primary-dark); }
 
-        @media print {
-            body * { visibility: hidden; }
-            #printArea, #printArea * { visibility: visible; }
-            #printArea { position: absolute; left: 0; top: 0; width: 100%; }
-        }
+        /* Search & Filters */
+        .controls { display: flex; flex-direction: column; gap: 15px; margin-bottom: 30px; }
+        .search-box { width: 100%; padding: 14px; border: none; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); font-size: 1rem; outline: none; }
+        .filters { display: flex; gap: 10px; flex-wrap: wrap; }
+        .filter-btn { padding: 8px 18px; border: none; background: white; color: var(--text-light); border-radius: 20px; cursor: pointer; font-weight: 500; box-shadow: 0 2px 5px rgba(0,0,0,0.05); transition: 0.3s; }
+        .filter-btn.active { background: var(--primary); color: white; }
+
+        /* Notes Grid */
+        .notes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .note-card { background: var(--card-bg); border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-left: 4px solid var(--primary); transition: transform 0.3s; }
+        .note-card:hover { transform: translateY(-5px); }
+        .note-subject { display: inline-block; background: #e0e7ff; color: var(--primary-dark); padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; margin-bottom: 10px; }
+        .note-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 10px; color: var(--text-main); }
+        .note-text { font-size: 0.95rem; color: var(--text-light); line-height: 1.6; white-space: pre-wrap; }
+        .note-date { font-size: 0.75rem; color: #9ca3af; margin-top: 15px; display: block; text-align: right; }
+
+        /* Login Modal */
+        #login-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: white; padding: 30px; border-radius: 12px; width: 90%; max-width: 400px; }
+        .modal-content h3 { margin-bottom: 20px; text-align: center; color: var(--primary); }
+        .close-modal { float: right; cursor: pointer; font-size: 1.5rem; font-weight: bold; color: #aaa; margin-top: -10px; }
     </style>
 </head>
-<body onclick="closeAllOptions(event)">
+<body>
 
-    <!-- PhonePe Style Full Screen Success Overlay -->
-    <div id="successOverlay" onclick="handleSuccessOverlayTap()">
-        <button id="successCloseBtn" onclick="stopProp(event); closeSuccessOverlay()"><i class="fas fa-times"></i></button>
-        <div class="check-circle"><i class="fas fa-check"></i></div>
-        <h2 id="successText">Success!</h2>
-        <div id="successActions" onclick="stopProp(event)">
-            <button class="success-btn success-btn-solid" onclick="viewFromSuccess()">View Invoice</button>
-        </div>
+    <header>
+        <h1>📚 HS 1st Year Commerce</h1>
+        <button class="login-btn" onclick="openLoginModal()" id="auth-btn">Admin Login</button>
+    </header>
+
+    <div class="notice-bar" id="notice-board">
+        <span>NOTICE</span> <marquee id="notice-text">Welcome to HS 1st Year Commerce Study Portal.</marquee>
     </div>
 
-    <!-- Status Bar Spacer -->
-    <div id="statusBarSpacer">Dp frz</div>
-
-    <div id="selectionBar">
-        <div><i class="fas fa-check-circle"></i> <span id="selectionCount">0 Selected</span></div>
-        <div id="selectionActions"></div>
-    </div>
-
-    <div id="syncIndicator"><i class="fas fa-sync fa-spin"></i> Connecting Firebase...</div>
-
-    <!-- HOME SECTION -->
-    <div id="home" class="section active">
-        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-            <button class="btn-red" style="flex:1;" onclick="openNewSale()"><i class="fas fa-plus"></i> Add Sell</button>
-            <button class="btn-blue" style="flex:1; background:var(--orange-credit);" onclick="openAddCreditDirect()"><i class="fas fa-hand-holding-usd"></i> Add Credit</button>
-        </div>
-        <input type="text" id="searchHistory" placeholder="Search by Name, Date, or Inv No..." oninput="renderHistory()">
+    <div class="container">
         
-        <!-- Invoice Counter Display -->
-        <div style="font-size:12px; font-weight:600; color:gray; margin-bottom:8px; padding:0 5px;">
-            Total Invoices: <span id="invoiceCountDisplay" style="color:var(--primary-red);">0</span>
-        </div>
-
-        <div class="tabs">
-            <div class="tab active" onclick="switchTab('all')" id="tab-all">All</div>
-            <div class="tab" onclick="switchTab('paid')" id="tab-paid">Paid</div>
-            <div class="tab" onclick="switchTab('credit')" id="tab-credit">Credit</div>
-        </div>
-        <div id="historyList"></div>
-    </div>
-
-    <!-- ADD SELL/CREDIT SECTION -->
-    <div id="addSell" class="section">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h2 id="sellTitle">New Sale</h2>
-            <button class="btn-red" style="width: auto; padding: 6px 12px; background:#333;" onclick="showSection('home')">Back</button>
-        </div>
-        <div style="background:#fff; padding:10px; border-radius:8px; margin-bottom:15px; border-left:3px solid var(--green-paid); box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-            <div style="position:relative;">
-                <input type="text" id="custName" placeholder="Customer Name" style="margin-bottom:8px;" oninput="showCustomerSuggestions(this.value)" autocomplete="off">
-                <div id="custSuggestions" class="suggestions-box" style="top: 42px;"></div>
-            </div>
-            <input type="tel" id="custPhone" placeholder="Phone Number (Optional)" style="margin-bottom:0;">
-        </div>
-        
-        <div style="display:flex; gap:8px; position:relative;" id="searchProductGroup">
-            <input type="text" id="searchProduct" placeholder="Search product..." oninput="showProductSuggestions(this.value)" style="flex:1;" autocomplete="off">
-            <button class="btn-red" style="width:45px; height:42px; padding:0;" onclick="openScanner('sell')"><i class="fas fa-barcode"></i></button>
-            <button class="btn-gray" id="btnDirectEntry" style="width:45px; height:42px; padding:0; background:#f4a261; display:none;" onclick="addDirectAmountItem()" title="Direct Amount Entry"><i class="fas fa-keyboard"></i></button>
-            <div id="suggestions" class="suggestions-box" style="top:42px;"></div>
-        </div>
-        <div id="cartList" style="min-height: 100px;"></div>
-        
-        <input type="text" id="upiId" placeholder="UPI ID (Optional for QR Code)" style="margin-top: 10px;">
-        
-        <div style="background:#fff; padding:15px; border-radius:8px; margin-top:5px; border:1px solid var(--border-color);">
-            <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:14px;"><span>Sub Total:</span> <span>₹<span id="cartTotal">0.00</span></span></div>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin:10px 0; font-size:14px;">
-                <span style="font-weight:600;">Received Amount:</span>
-                <input type="number" id="receivedAmt" placeholder="0" style="width:100px; margin:0; text-align:right;" oninput="calculateDue()">
-            </div>
-            <div style="display:flex; justify-content:space-between; font-size:16px; font-weight:700; color:var(--primary-red); border-top:1px dashed #ccc; padding-top:8px;"><span>Due Amount:</span> <span>₹<span id="dueAmt">0.00</span></span></div>
-        </div>
-        <button class="btn-red" style="margin-top:15px;" onclick="generateInvoice(false)">Preview & Generate Invoice</button>
-    </div>
-
-    <!-- PRODUCTS SECTION -->
-    <div id="products" class="section">
-        <h2>Products Directory</h2>
-        <input type="text" id="searchDirProduct" placeholder="Search product..." oninput="renderProducts()">
-        
-        <!-- Product Counter Display -->
-        <div style="font-size:12px; font-weight:600; color:gray; margin-bottom:8px; padding:0 5px;">
-            Total Products: <span id="productCountDisplay" style="color:var(--primary-red);">0</span>
-        </div>
-
-        <button class="btn-red" style="margin-bottom: 15px;" onclick="openAddProductMode()"><i class="fas fa-plus"></i> Add Product</button>
-        <div id="productList"></div>
-    </div>
-
-    <!-- ADD PRODUCT MODAL -->
-    <div id="addProductModal" class="section">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h2 id="productModalTitle">Add Product</h2>
-            <button class="btn-red" style="width: auto; background:#333; padding: 6px 12px;" onclick="showSection('products')">Back</button>
-        </div>
-        <input type="hidden" id="editIndex" value="-1">
-        
-        <div style="text-align: center; margin-bottom: 15px;">
-            <div class="fallback-icon" id="pImgFallback" style="width:75px; height:100px; margin:0 auto 5px; font-size:40px;"><i class="fas fa-box-open"></i></div>
-            <img id="pImgPreview" src="" style="width:75px; height:100px; object-fit:cover; border-radius:8px; border:1px solid #ccc; margin:0 auto 5px; display:none;">
-            
-            <input type="file" id="pImageInputGallery" accept="image/*" style="display: none;" onchange="handleImageUpload(event)">
-            
-            <div style="display:flex; gap:10px; justify-content:center;">
-                <button class="btn-blue" style="width:auto; padding:6px 12px;" onclick="openPhotoCamera()"><i class="fas fa-camera"></i> Camera</button>
-                <button class="btn-gray" style="width:auto; padding:6px 12px;" onclick="document.getElementById('pImageInputGallery').click()"><i class="fas fa-image"></i> Gallery</button>
-            </div>
-        </div>
-
-        <div style="display:flex; gap:8px;">
-            <input type="text" id="pBarcode" placeholder="Barcode">
-            <button class="btn-red" style="width: 50px; background: #444;" onclick="openScanner('product')"><i class="fas fa-barcode"></i></button>
-        </div>
-        <input type="text" id="pName" placeholder="Product Name">
-        <input type="number" id="pPrice" placeholder="Price (₹)">
-        <button class="btn-red" onclick="saveProduct()">Save Product</button>
-    </div>
-
-    <!-- REPORTS & OTHER OPTIONS SECTION -->
-    <div id="reports" class="section">
-        <h2>Business Dashboard</h2>
-        <div class="card" style="display:block; border:none; pointer-events:none; margin-bottom: 15px;">
-            <p>Total Sales: <strong style="color:var(--primary-red); font-size:18px;">₹<span id="repTotalSales">0.00</span></strong></p>
-            <p>Total Received: <strong style="color:var(--green-paid);">₹<span id="repReceived">0.00</span></strong></p>
-            <p>Total Pending Credit: <strong style="color:var(--orange-credit);">₹<span id="repDue">0.00</span></strong></p>
-        </div>
-        
-        <div style="display:flex; gap:10px; margin-top:10px;">
-            <button class="btn-green" style="flex:1;" onclick="showSection('customersSec')"><i class="fas fa-users"></i> Customers</button>
-            <button class="btn-gray" style="flex:1;" onclick="showSection('trashSec')"><i class="fas fa-trash-alt"></i> Trash Bin</button>
-        </div>
-        <div style="display:flex; gap:10px; margin-top:10px;">
-            <button class="btn-blue" style="width: 100%;" onclick="forceSyncPull()"><i class="fas fa-sync"></i> Refresh Cloud Data</button>
-        </div>
-        
-        <!-- CLOUD STATUS UI -->
-        <p id="cloudStatusText" style="font-size:12px; color:#2a9d8f; margin-top:15px; text-align:center; font-weight:600;"><i class="fas fa-circle" style="font-size:8px;"></i> Checking Firebase...</p>
-    </div>
-
-    <!-- CUSTOMERS LIST SECTION -->
-    <div id="customersSec" class="section">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h2>Customer List</h2>
-            <button class="btn-red" style="width: auto; padding: 6px 12px; background:#333;" onclick="showSection('reports')">Back</button>
-        </div>
-        <button class="btn-red" style="margin-bottom: 15px;" onclick="openAddCustomerModal()"><i class="fas fa-user-plus"></i> Add New Customer</button>
-        <p style="font-size:11px; color:gray; margin-bottom:10px;">Sorted by latest transaction. Long press to Edit/Delete.</p>
-        <input type="text" id="searchCustomer" placeholder="Search by Name or Phone..." oninput="renderCustomers()">
-        
-        <!-- Customer Counter Display -->
-        <div style="font-size:12px; font-weight:600; color:gray; margin-bottom:8px; padding:0 5px;">
-            Total Customers: <span id="customerCountDisplay" style="color:var(--primary-red);">0</span>
-        </div>
-
-        <div id="customerList"></div>
-    </div>
-
-    <!-- ADD/EDIT CUSTOMER MODAL -->
-    <div id="addCustomerModal" class="section">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h2 id="customerModalTitle">Add Customer</h2>
-            <button class="btn-red" style="width: auto; background:#333; padding: 6px 12px;" onclick="showSection('customersSec')">Back</button>
-        </div>
-        <input type="hidden" id="editCustIndex" value="-1">
-        <input type="text" id="cNameInput" placeholder="Customer Name">
-        <input type="tel" id="cPhoneInput" placeholder="Phone Number (Optional)">
-        <button class="btn-red" style="margin-top:10px;" onclick="saveCustomer()">Save Customer</button>
-    </div>
-
-    <!-- CUSTOMER DETAILS SECTION -->
-    <div id="customerDetailsSec" class="section">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h2>Customer Profile</h2>
-            <button class="btn-red" style="width: auto; background:#333; padding: 6px 12px;" onclick="showSection('customersSec')">Back</button>
-        </div>
-        <div class="card" style="display:block; border-left:4px solid #0077b6; pointer-events:none; margin-bottom: 15px;">
-            <h3 id="cdName" style="margin-bottom:5px;"></h3>
-            <p style="font-size:12px; color:gray; margin-bottom:10px;">Phone: <span id="cdPhone"></span></p>
-            <p style="font-size:14px; font-weight:600;">Total Sales Amount: <span style="color:var(--green-paid);">₹<span id="cdTotalSales">0.00</span></span></p>
-        </div>
-        <h3>Invoice History</h3>
-        <p style="font-size:11px; color:gray; margin-bottom:10px;">Showing newest to oldest. Long press to Edit/Delete.</p>
-        <div id="cdHistoryList"></div>
-    </div>
-
-    <!-- TRASH BIN SECTION -->
-    <div id="trashSec" class="section">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h2>Trash Bin</h2>
-            <button class="btn-red" style="width: auto; padding: 6px 12px; background:#333;" onclick="showSection('reports')">Back</button>
-        </div>
-        <p style="font-size:11px; color:gray; margin-bottom:10px;">Long press items to Restore or Permanently Delete.</p>
-        <input type="text" id="searchTrash" placeholder="Search by Name, Date, or Inv No..." oninput="renderTrash()">
-        <div id="trashList"></div>
-    </div>
-
-    <!-- INVOICE MODAL -->
-    <div id="invoiceModal">
-        <div class="top-bar"><button onclick="closeInvoiceUI()"><i class="fas fa-arrow-left"></i> Back</button></div>
-        <div id="printArea" style="background:#ffffff !important;">
-            <div id="invWatermark" class="watermark">PAID</div>
-            <div style="text-align: center; border-bottom: 2px solid #222; padding-bottom: 10px; margin-bottom:15px;">
-                <h1 style="font-size: 22px; text-transform: uppercase;">Bholanath Store</h1>
-                <p style="font-size: 11px; color: #555;">Khairabari, Assam</p>
-            </div>
-            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 15px;">
-                <div><strong>To:</strong> <span id="invCustName"></span><br><span id="invCustPhone"></span></div>
-                <div style="text-align: right;"><strong>Date:</strong> <span id="invDate"></span><br><strong>Inv:</strong> <span id="invNo"></span></div>
+        <!-- ADMIN PANEL -->
+        <div id="admin-panel">
+            <div class="admin-header">
+                <h2>Admin Dashboard</h2>
+                <button class="logout-btn" onclick="logoutAdmin()">Logout</button>
             </div>
             
-            <table class="invoice-table">
-                <thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
-                <tbody id="invoiceTableBody"></tbody>
-            </table>
+            <div class="admin-grid">
+                <!-- Add Subject & Notice -->
+                <div>
+                    <div class="form-group">
+                        <label>Update Notice Board</label>
+                        <input type="text" id="new-notice" placeholder="Enter urgent notice here...">
+                        <button class="btn-submit" style="margin-top: 10px;" onclick="updateNotice()">Update Notice</button>
+                    </div>
+                    <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
+                    <div class="form-group">
+                        <label>Add New Subject</label>
+                        <input type="text" id="new-subject" placeholder="e.g. Accountancy, Finance...">
+                        <button class="btn-submit" style="margin-top: 10px; background: var(--secondary);" onclick="addSubject()">Add Subject</button>
+                    </div>
+                </div>
+
+                <!-- Add Note -->
+                <div>
+                    <div class="form-group">
+                        <label>Select Subject</label>
+                        <select id="subject-select">
+                            <!-- Dynamic Subjects will load here -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Note Title / Topic</label>
+                        <input type="text" id="note-title" placeholder="e.g. Chapter 1 Summary">
+                    </div>
+                    <div class="form-group">
+                        <label>Notes Content</label>
+                        <textarea id="note-text" rows="5" placeholder="Write or paste your notes here..."></textarea>
+                    </div>
+                    <button class="btn-submit" onclick="addNote()">Upload Note</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- USER VIEW -->
+        <div class="controls">
+            <input type="text" id="search-bar" class="search-box" placeholder="Search notes by keyword or title..." onkeyup="renderNotes()">
             
-            <div style="margin-top: 15px; border-top: 1px solid #ccc; padding-top: 10px; font-size:13px;">
-                <div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>Sub Total:</span> <strong>₹<span id="invTotal">0.00</span></strong></div>
-                <div style="display:flex; justify-content:space-between; margin-bottom:5px; color:var(--green-paid);"><span>Received:</span> <strong>₹<span id="invReceived">0.00</span></strong></div>
-                <div style="display:flex; justify-content:space-between; font-size:15px; color:var(--primary-red);"><span>Due (Credit):</span> <strong>₹<span id="invDue">0.00</span></strong></div>
-            </div>
-            <div id="qrContainer" style="display:none; text-align:center; margin-top:20px; padding-top:15px; border-top:1px dashed #ccc;">
-                <p style="margin-bottom:5px; font-size:12px; color:gray;">Scan to Pay via UPI</p>
-                <div id="qrcode" style="display:flex; justify-content:center;"></div>
+            <div class="filters" id="subject-filters">
+                <button class="filter-btn active" onclick="setFilter('All')">All Subjects</button>
+                <!-- Dynamic Filters will load here -->
             </div>
         </div>
-        
-        <div style="padding: 20px; display:flex; flex-direction:column; gap:10px;">
-            <button class="btn-gray" id="btnToggleChecklist" onclick="toggleChecklistMode()"><i class="fas fa-tasks"></i> Modify Items (Checklist)</button>
-            <button class="btn-red" id="btnSaveChecklist" style="display:none; background:#ffb703; color:#000;" onclick="saveChecklistChanges()"><i class="fas fa-save"></i> Save Changes</button>
-            
-            <button class="btn-green" id="btnWaShare" onclick="shareOnWhatsApp()"><i class="fab fa-whatsapp"></i> WhatsApp Share</button>
-            <button class="btn-blue" id="btnPdfDownload" onclick="downloadInvoicePDF()"><i class="fas fa-file-pdf"></i> Download PDF (Cloud Hack)</button>
-            <button class="btn-red" id="saveInvoiceBtn" onclick="saveAndCloseInvoice()"><i class="fas fa-check-circle"></i> Save & Done</button>
+
+        <div class="notes-grid" id="notes-display">
+            <!-- Notes will render here -->
         </div>
+
     </div>
 
-    <!-- FAST SCANNER MODAL (FOR BARCODES) -->
-    <div id="customScannerModal">
-        <div class="scanner-container">
-            <div id="reader"></div>
-            <div class="scan-laser"></div>
-        </div>
-        <div class="scanner-controls">
-            <button class="scan-btn" style="background:#ffd166; color:#000;" onclick="toggleFlashlight()"><i class="fas fa-bolt"></i> Flash</button>
-            <button class="scan-btn" style="background:#118ab2; color:#fff;" onclick="flipCamera()"><i class="fas fa-sync"></i> Flip</button>
-            <button class="scan-btn" style="background:var(--primary-red); color:#fff;" onclick="closeScanner()"><i class="fas fa-times"></i> Close</button>
-        </div>
-    </div>
-
-    <!-- IN-APP CAMERA MODAL (FOR TAKING 3:4 PHOTOS) -->
-    <div id="photoCameraModal">
-        <video id="photoVideo" muted autoplay playsinline></video>
-        <div class="photo-controls">
-            <button onclick="togglePhotoFlashlight()" style="background:#ffd166; color:#000; border:none; padding:12px 18px; border-radius:8px; font-size:18px;"><i class="fas fa-bolt"></i></button>
-            <button onclick="flipPhotoCamera()" style="background:#118ab2; color:#fff; border:none; padding:12px 18px; border-radius:8px; font-size:18px;"><i class="fas fa-sync"></i></button>
-            <button onclick="capturePhoto()" style="width:70px; height:70px; border-radius:50%; background:var(--primary-red); border:4px solid #fff; cursor:pointer; box-shadow:0 0 10px rgba(255,255,255,0.5);"></button>
-            <button onclick="closePhotoCamera()" style="background:#333; color:#fff; border:none; padding:12px 18px; border-radius:8px; font-size:18px;"><i class="fas fa-times"></i></button>
-        </div>
-    </div>
-
-    <!-- CREDIT EDIT MODAL -->
-    <div id="creditPayModal">
-        <div class="top-bar"><button onclick="document.getElementById('creditPayModal').style.display='none'"><i class="fas fa-arrow-left"></i> Back</button></div>
-        <div style="padding:20px;">
-            <h2>Receive Credit Payment</h2>
-            <div class="card" style="display:block; border:none; pointer-events:none;">
-                <p>Customer: <strong id="cpName"></strong></p>
-                <p>Invoice Total: <strong>₹<span id="cpTotal"></span></strong></p>
-                <p>Already Received: <strong>₹<span id="cpAlreadyRec"></span></strong></p>
-                <p>Current Due: <strong style="color:var(--primary-red);">₹<span id="cpDue"></span></strong></p>
+    <!-- Login Modal -->
+    <div id="login-modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeLoginModal()">&times;</span>
+            <h3>Admin Authentication</h3>
+            <div class="form-group">
+                <label>Email Address</label>
+                <input type="email" id="login-email" placeholder="Enter admin email">
             </div>
-            <label style="font-weight:600; margin-top:15px; display:block;">Enter New Payment Received:</label>
-            <input type="number" id="cpNewPay" placeholder="0">
-            <button class="btn-green" onclick="submitCreditPayment()">Update Payment</button>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="login-password" placeholder="Enter 5-digit PIN">
+            </div>
+            <button class="btn-submit" onclick="verifyLogin()">Login</button>
         </div>
-    </div>
-
-    <!-- BOTTOM NAV -->
-    <div class="navbar" id="bottomNav">
-        <button class="nav-btn active" onclick="showSection('home')" id="nav-home"><i class="fas fa-home"></i>Home</button>
-        <button class="nav-btn" onclick="showSection('products')" id="nav-products"><i class="fas fa-box"></i>Products</button>
-        <button class="nav-btn" onclick="showSection('reports')" id="nav-reports"><i class="fas fa-chart-pie"></i>Reports</button>
     </div>
 
     <script>
-        // --- DATA INITIALIZATION ---
-        let products = JSON.parse(localStorage.getItem('bs_products')) || [];
-        let salesHistory = JSON.parse(localStorage.getItem('bs_sales')) || [];
-        let trashHistory = JSON.parse(localStorage.getItem('bs_trash')) || [];
-        let customers = JSON.parse(localStorage.getItem('bs_customers')) || []; 
-        let lastSyncTime = parseInt(localStorage.getItem('bs_last_sync')) || 0;
+        // Database simulation (Replace with Firebase for true realtime sync across devices)
+        let dbData = JSON.parse(localStorage.getItem('commerceNotesDB')) || {
+            notice: "Welcome to the official portal for HS 1st Year Commerce.",
+            subjects: ["Accountancy", "Business Studies", "English", "Assamese"],
+            notes: []
+        };
         
-        let cart = []; 
-        let totalAmount = 0;
-        let currentTab = 'all';
-        let currentInvoiceData = null;
-        let activeCreditEditIndex = -1;
-        let activeEditInvoiceIndex = -1; 
-        let base64ImageString = ""; 
-        let currentCustomerDetailIndex = -1;
-        let isChecklistMode = false; 
+        let currentFilter = 'All';
 
-        let activeSelectMode = null; 
-        let selectedIndexes = new Set();
-        let pressTimer = null;
-        let isPressing = false;
-        let activeOptionsId = null; 
-        let successAutoTimer = null; 
-
-        // --- NEW FIREBASE REST API (LIGHTWEIGHT & FAST) ---
-        const FIREBASE_URL = 'https://bholanath-store-default-rtdb.firebaseio.com/pos_data.json';
-        let isSyncing = false;
-
-        function updateCloudStatusUI(connected, customMsg="") {
-            const statusEl = document.getElementById('cloudStatusText'); 
-            if(!statusEl) return;
-            if(connected) {
-                statusEl.style.color = "#2a9d8f"; 
-                statusEl.innerHTML = `<i class="fas fa-circle" style="font-size:8px;"></i> ${customMsg || "Firebase: Synced Successfully"}`;
-            } else {
-                statusEl.style.color = "#e63946"; 
-                statusEl.innerHTML = `<i class="fas fa-circle" style="font-size:8px;"></i> ${customMsg || "Firebase: Offline"}`;
-            }
-        }
-
-        function showSyncToast(msg) {
-            const ind = document.getElementById('syncIndicator'); 
-            ind.innerHTML = `<i class="fas fa-sync fa-spin"></i> ${msg}`;
-            ind.style.display = 'block'; 
-            setTimeout(() => { ind.style.display = 'none'; }, 2000);
-        }
-
-        // OPTIMIZED: Only re-render the section that is currently visible on the screen
-        function refreshActiveView() {
-            if(document.getElementById('home').classList.contains('active')) renderHistory();
-            if(document.getElementById('products').classList.contains('active')) renderProducts();
-            if(document.getElementById('reports').classList.contains('active')) updateReports();
-            if(document.getElementById('trashSec').classList.contains('active')) renderTrash();
-            if(document.getElementById('customersSec').classList.contains('active')) renderCustomers();
-            if(document.getElementById('customerDetailsSec').classList.contains('active')) renderCustomerDetails();
-        }
-
-        // Fetch data from Firebase
-        async function fetchFromFirebase(isManual = false) {
-            if(isManual) showSyncToast("Refreshing from Firebase...");
-            updateCloudStatusUI(false, "Connecting Firebase...");
-            try {
-                const response = await fetch(FIREBASE_URL);
-                if(!response.ok) throw new Error("Network Error");
-                const data = await response.json();
-                
-                if (data && data.timestamp) {
-                    if (data.timestamp > lastSyncTime && data.products.length >= products.length) {
-                        products = data.products || [];
-                        salesHistory = data.salesHistory || [];
-                        trashHistory = data.trashHistory || [];
-                        customers = data.customers || [];
-                        lastSyncTime = data.timestamp;
-                        
-                        localStorage.setItem('bs_products', JSON.stringify(products)); 
-                        localStorage.setItem('bs_sales', JSON.stringify(salesHistory));
-                        localStorage.setItem('bs_trash', JSON.stringify(trashHistory)); 
-                        localStorage.setItem('bs_customers', JSON.stringify(customers));
-                        localStorage.setItem('bs_last_sync', lastSyncTime);
-                        
-                        refreshActiveView();
-                        updateCloudStatusUI(true, "Firebase: Synced Successfully");
-                        if(isManual) showSyncToast("Data loaded from Cloud!");
-                    } else if (lastSyncTime > data.timestamp || products.length > (data.products ? data.products.length : 0)) {
-                        syncToFirebase();
-                    } else {
-                        updateCloudStatusUI(true, "Firebase: Synced Successfully");
-                    }
-                } else if (!data && (products.length > 0 || salesHistory.length > 0 || customers.length > 0)) {
-                    syncToFirebase();
-                } else {
-                    updateCloudStatusUI(true, "Firebase: Connected (Empty)");
-                }
-            } catch(e) {
-                updateCloudStatusUI(false, "Firebase Offline / Error");
-                if(isManual) showSyncToast("Failed to connect Firebase");
-            }
-        }
-
-        // Upload data to Firebase
-        async function syncToFirebase() {
-            if(isSyncing) return;
-            isSyncing = true;
-            updateCloudStatusUI(false, "Syncing to Firebase...");
-            try {
-                const payload = { products, salesHistory, trashHistory, customers, timestamp: lastSyncTime };
-                const response = await fetch(FIREBASE_URL, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                
-                if(response.ok) {
-                    updateCloudStatusUI(true, "Firebase: Synced Successfully");
-                } else {
-                    updateCloudStatusUI(false, "Firebase Sync Failed");
-                }
-            } catch(e) {
-                updateCloudStatusUI(false, "Saved Locally (Offline)");
-            }
-            isSyncing = false;
-        }
-
-        function forceSyncPull() {
-            fetchFromFirebase(true);
-        }
-
-        window.onload = () => { 
-            refreshActiveView(); 
-            fetchFromFirebase(); 
-        }
-
-        function saveData() {
-            localStorage.setItem('bs_products', JSON.stringify(products)); 
-            localStorage.setItem('bs_sales', JSON.stringify(salesHistory));
-            localStorage.setItem('bs_trash', JSON.stringify(trashHistory)); 
-            localStorage.setItem('bs_customers', JSON.stringify(customers));
-            lastSyncTime = Date.now(); 
-            localStorage.setItem('bs_last_sync', lastSyncTime);
-            updateReports();
-            syncToFirebase(); 
-        }
-
-        // --- SUCCESS ANIMATION & SOUND ENGINE ---
-        function playSuccessSound() {
-            try {
-                const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                function playNote(freq, type, startTime, duration, vol) {
-                    const osc = ctx.createOscillator();
-                    const gain = ctx.createGain();
-                    osc.connect(gain); gain.connect(ctx.destination);
-                    osc.type = type; osc.frequency.setValueAtTime(freq, startTime);
-                    gain.gain.setValueAtTime(0, startTime);
-                    gain.gain.linearRampToValueAtTime(vol, startTime + 0.02);
-                    gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-                    osc.start(startTime); osc.stop(startTime + duration);
-                }
-                const now = ctx.currentTime;
-                playNote(987.77, 'sine', now, 0.4, 0.6); 
-                playNote(1318.51, 'sine', now + 0.12, 0.6, 0.6); 
-            } catch(e){}
-        }
-
-        function showSuccessOverlay(msg, isSale) {
-            clearTimeout(successAutoTimer);
-            document.getElementById('successText').innerText = msg;
-            const overlay = document.getElementById('successOverlay');
-            const closeBtn = document.getElementById('successCloseBtn');
-            const actions = document.getElementById('successActions');
+        // Initialization
+        window.onload = function() {
+            document.getElementById('notice-text').innerText = dbData.notice;
+            renderSubjects();
+            renderNotes();
             
-            if(isSale) {
-                closeBtn.style.display = 'block';
-                actions.style.display = 'flex'; 
-            } else {
-                closeBtn.style.display = 'none';
-                actions.style.display = 'none'; 
-                successAutoTimer = setTimeout(() => { closeSuccessOverlay(); }, 2500);
-            }
-            
-            overlay.style.display = 'flex';
-            setTimeout(() => { overlay.style.opacity = '1'; }, 10);
-            playSuccessSound();
-        }
-
-        function handleSuccessOverlayTap() {
-            const actions = document.getElementById('successActions');
-            if (actions.style.display === 'none') closeSuccessOverlay();
-        }
-
-        function closeSuccessOverlay() {
-            clearTimeout(successAutoTimer);
-            const overlay = document.getElementById('successOverlay');
-            overlay.style.opacity = '0'; 
-            setTimeout(() => { overlay.style.display = 'none'; }, 300);
-        }
-
-        function viewFromSuccess() {
-            closeSuccessOverlay();
-            generateInvoice(true, currentInvoiceData);
-            document.getElementById('saveInvoiceBtn').style.display = 'none';
-        }
-
-        // --- CUSTOMER LOGIC & RENDER ---
-        function showCustomerSuggestions(q) {
-            const box = document.getElementById('custSuggestions'); box.innerHTML = '';
-            if(!q) { box.style.display = 'none'; return; }
-            let matches = customers.filter(c => c.name.toLowerCase().includes(q.toLowerCase()) || (c.phone && c.phone.includes(q)));
-            
-            if(matches.length > 0) {
-                box.style.display = 'block';
-                let html = '';
-                matches.forEach(c => { 
-                    let idx = customers.indexOf(c);
-                    html += `<div class="suggestion-item" onclick="selectCustomerByIndex(${idx})">
-                        <i class="fas fa-user" style="color:gray;"></i> <span>${c.name} ${c.phone ? ' - '+c.phone : ''}</span>
-                    </div>`; 
-                });
-                box.innerHTML = html;
-            } else {
-                box.style.display = 'none';
-            }
-        }
-
-        window.selectCustomerByIndex = function(idx) {
-            selectCustomer(customers[idx].name, customers[idx].phone || '');
-        }
-
-        function selectCustomer(name, phone) {
-            document.getElementById('custName').value = name;
-            document.getElementById('custPhone').value = phone;
-            document.getElementById('custSuggestions').style.display = 'none';
-        }
-
-        function openAddCustomerModal() {
-            document.getElementById('customerModalTitle').innerText = "Add New Customer";
-            document.getElementById('editCustIndex').value = "-1";
-            document.getElementById('cNameInput').value = '';
-            document.getElementById('cPhoneInput').value = '';
-            showSection('addCustomerModal');
-        }
-
-        function editCustomer(idx, e) {
-            stopProp(e); closeAllOptions();
-            document.getElementById('customerModalTitle').innerText = "Edit Customer";
-            document.getElementById('editCustIndex').value = idx;
-            document.getElementById('cNameInput').value = customers[idx].name;
-            document.getElementById('cPhoneInput').value = customers[idx].phone || '';
-            showSection('addCustomerModal');
-        }
-
-        function saveCustomer() {
-            let name = document.getElementById('cNameInput').value.trim();
-            let phone = document.getElementById('cPhoneInput').value.trim();
-            let idx = parseInt(document.getElementById('editCustIndex').value);
-            
-            if(!name) return alert("Customer Name is required!");
-
-            if(phone) {
-                let existing = customers.find((c, i) => i !== idx && c.phone === phone);
-                if(existing) {
-                    alert(`⚠️ Error: This phone number is already registered to '${existing.name}'.\nDuplicate numbers are not allowed.`);
-                    return;
-                }
-            }
-
-            if(idx > -1) {
-                let oldName = customers[idx].name;
-                customers[idx].name = name;
-                customers[idx].phone = phone;
-                
-                salesHistory.forEach(s => { 
-                    if(s.custName === oldName) {
-                        s.custName = name;
-                        s.custPhone = phone; 
-                    }
-                });
-            } else {
-                let existingName = customers.find(c => c.name.toLowerCase() === name.toLowerCase());
-                if(existingName) return alert("A customer with this exact name already exists!");
-                
-                customers.push({name: name, phone: phone});
-            }
-
-            saveData();
-            showSection('customersSec');
-        }
-
-        function renderCustomers() {
-            const list = document.getElementById('customerList'); 
-            const q = document.getElementById('searchCustomer').value.toLowerCase();
-            
-            let custStats = {};
-            salesHistory.forEach(s => {
-                if(s.custName === "Walk-in Customer") return;
-                let t = new Date(s.date).getTime();
-                if(!custStats[s.custName]) custStats[s.custName] = { lastSale: 0, due: 0 };
-                if(t > custStats[s.custName].lastSale) custStats[s.custName].lastSale = t;
-                if(s.status === 'CREDIT') custStats[s.custName].due += s.due;
-            });
-
-            let filtered = customers.filter(c => c.name.toLowerCase().includes(q) || (c.phone && c.phone.includes(q)));
-            
-            filtered.sort((a, b) => {
-                let tA = custStats[a.name] ? custStats[a.name].lastSale : 0;
-                let tB = custStats[b.name] ? custStats[b.name].lastSale : 0;
-                return tB - tA; 
-            });
-
-            let countDisp = document.getElementById('customerCountDisplay');
-            if(countDisp) countDisp.innerText = filtered.length;
-
-            if (filtered.length === 0) {
-                list.innerHTML = '<p style="text-align:center;">No customers found.</p>';
-                return;
-            }
-            
-            let html = ''; // OPTIMIZATION: String building for ZERO LAG
-            filtered.forEach(c => {
-                const realIndex = customers.indexOf(c);
-                const isSelected = selectedIndexes.has(realIndex) ? 'selected-card' : '';
-                let due = custStats[c.name] ? custStats[c.name].due : 0;
-                
-                html += `
-                <div class="card ${isSelected}" style="border-left:4px solid ${due > 0 ? 'var(--primary-red)' : 'var(--green-paid)'}; cursor:pointer; margin-bottom:8px;"
-                     onmousedown="handleStartPress('customer', ${realIndex})" onmouseleave="handleEndPress()" onmouseup="handleEndPress()" ontouchstart="handleStartPress('customer', ${realIndex})" ontouchmove="handleEndPress()" ontouchend="handleEndPress()" onclick="handleItemClick('customer', ${realIndex}, event)">
-                    
-                    <div class="fallback-icon" style="width:40px;height:40px;font-size:18px;background:#e9ecef;color:#6c757d;"><i class="fas fa-user"></i></div>
-                    <div class="card-content" style="pointer-events:none;">
-                        <h4 style="font-size:14px;">${c.name}</h4>
-                        <p style="font-size:11px;color:gray;">Phone: ${c.phone || 'N/A'}</p>
-                        ${due > 0 ? `<h4 style="font-size:13px; color:var(--primary-red); margin-top:3px;">Pending Credit: ₹${due.toFixed(2)}</h4>` 
-                                  : `<h4 style="font-size:13px; color:var(--green-paid); margin-top:3px;">No Dues</h4>`}
-                    </div>
-
-                    <div class="card-opts" id="opts-customer-${realIndex}" onclick="stopProp(event)">
-                        <button class="opt-btn" style="color:#0077b6;" onclick="editCustomer(${realIndex}, event)" title="Edit"><i class="fas fa-edit"></i></button>
-                        <button class="opt-btn" style="color:var(--primary-red);" onclick="startSelection('customer', ${realIndex}, event)" title="Select"><i class="fas fa-check-square"></i></button>
-                        <button class="opt-btn" style="color:#333;" onclick="closeOptionsFix(event)" title="Close"><i class="fas fa-times"></i></button>
-                    </div>
-                </div>`;
-            });
-            list.innerHTML = html;
-        }
-
-        function renderCustomerDetails() {
-            if(currentCustomerDetailIndex === -1 || !customers[currentCustomerDetailIndex]) return;
-            let c = customers[currentCustomerDetailIndex];
-            document.getElementById('cdName').innerText = c.name;
-            document.getElementById('cdPhone').innerText = c.phone || 'N/A';
-            
-            let totalAmount = 0;
-            let listHtml = ''; // OPTIMIZATION: String building
-            
-            for (let i = salesHistory.length - 1; i >= 0; i--) {
-                let sale = salesHistory[i];
-                if (sale.custName === c.name) {
-                    totalAmount += sale.total;
-                    const isSelected = selectedIndexes.has(i) ? 'selected-card' : '';
-                    
-                    listHtml += `
-                    <div class="card ${isSelected}" style="border-left:4px solid ${sale.status==='PAID' ? 'var(--green-paid)' : 'var(--primary-red)'}; cursor:pointer;"
-                         onmousedown="handleStartPress('cdhistory', ${i})" onmouseleave="handleEndPress()" onmouseup="handleEndPress()" ontouchstart="handleStartPress('cdhistory', ${i})" ontouchmove="handleEndPress()" ontouchend="handleEndPress()" onclick="handleItemClick('cdhistory', ${i}, event)">
-                        <div class="card-content">
-                            <h4>Inv: ${sale.invNo} <span class="badge ${sale.status==='PAID' ? 'bg-paid' : 'bg-credit'}">${sale.status}</span></h4>
-                            <p style="font-size:11px;color:gray;">${sale.date}</p>
-                            <h4 style="font-size:14px; margin-top:3px;">Tot: ₹${sale.total} | <span style="color:red;">Due: ₹${sale.due}</span></h4>
-                        </div>
-                        <div class="card-opts" id="opts-cdhistory-${i}" onclick="stopProp(event)">
-                            <button class="opt-btn" style="color:#0077b6;" onclick="directEditInvoice(${i}, event)" title="Edit"><i class="fas fa-edit"></i></button>
-                            <button class="opt-btn" style="color:var(--primary-red);" onclick="startSelection('cdhistory', ${i}, event)" title="Select"><i class="fas fa-check-square"></i></button>
-                            <button class="opt-btn" style="color:#333;" onclick="closeOptionsFix(event)" title="Close"><i class="fas fa-times"></i></button>
-                        </div>`;
-                        
-                    if(sale.status === 'CREDIT') { 
-                        listHtml += `<button onclick="stopProp(event); openCreditPay(${i})" class="btn-green" style="width:auto; padding:8px; pointer-events:auto; z-index:9;"><i class="fas fa-rupee-sign"></i> Pay</button>`; 
-                    }
-                    listHtml += `</div>`;
-                }
-            }
-
-            document.getElementById('cdTotalSales').innerText = totalAmount.toFixed(2);
-            document.getElementById('cdHistoryList').innerHTML = listHtml || '<p style="text-align:center; padding:10px;">No sales history found.</p>';
-        }
-
-        function showCustomerDetails(idx) {
-            currentCustomerDetailIndex = idx;
-            showSection('customerDetailsSec'); 
-        }
-
-        function toggleChecklistMode() {
-            isChecklistMode = !isChecklistMode;
-            renderInvoiceItemsTable();
-            
-            document.getElementById('btnToggleChecklist').style.display = isChecklistMode ? 'none' : 'block';
-            document.getElementById('btnSaveChecklist').style.display = isChecklistMode ? 'block' : 'none';
-            
-            document.getElementById('btnWaShare').style.display = isChecklistMode ? 'none' : 'block';
-            document.getElementById('btnPdfDownload').style.display = isChecklistMode ? 'none' : 'block';
-            
-            let saveDoneBtn = document.getElementById('saveInvoiceBtn');
-            if (!saveDoneBtn.dataset.origDisplay) saveDoneBtn.dataset.origDisplay = saveDoneBtn.style.display;
-            saveDoneBtn.style.display = isChecklistMode ? 'none' : saveDoneBtn.dataset.origDisplay;
-        }
-
-        function renderInvoiceItemsTable() {
-            let tbody = '';
-            currentInvoiceData.items.forEach((p, i) => { 
-                let chk = isChecklistMode ? `<input type="checkbox" id="chkItem_${i}" checked onchange="recalcChecklist()" style="width:16px; height:16px; margin-right:8px; vertical-align:middle; accent-color:var(--primary-red);">` : '';
-                tbody += `<tr><td>${chk}<span id="itemName_${i}">${p.name}</span></td><td>${p.qty}</td><td>₹${p.cartPrice}</td><td>₹${p.qty * p.cartPrice}</td></tr>`; 
-            });
-            document.getElementById('invoiceTableBody').innerHTML = tbody;
-            
-            document.getElementById('invTotal').innerText = currentInvoiceData.total.toFixed(2);
-            document.getElementById('invReceived').innerText = currentInvoiceData.received.toFixed(2);
-            document.getElementById('invDue').innerText = currentInvoiceData.due.toFixed(2);
-            
-            const wm = document.getElementById('invWatermark');
-            wm.innerText = currentInvoiceData.status;
-            wm.className = `watermark ${currentInvoiceData.status === 'PAID' ? 'wm-paid' : 'wm-credit'}`;
-        }
-
-        function recalcChecklist() {
-            let newTotal = 0;
-            currentInvoiceData.items.forEach((p, i) => {
-                let cb = document.getElementById(`chkItem_${i}`);
-                let nameSpan = document.getElementById(`itemName_${i}`);
-                if(cb && cb.checked) {
-                    newTotal += (p.qty * p.cartPrice);
-                    nameSpan.style.textDecoration = 'none';
-                    nameSpan.style.color = 'inherit';
-                } else if(cb && !cb.checked) {
-                    nameSpan.style.textDecoration = 'line-through';
-                    nameSpan.style.color = 'gray';
-                }
-            });
-            
-            let rec = currentInvoiceData.received;
-            let newDue = newTotal - rec;
-            newDue = newDue > 0 ? newDue : 0;
-            
-            document.getElementById('invTotal').innerText = newTotal.toFixed(2);
-            document.getElementById('invDue').innerText = newDue.toFixed(2);
-            
-            let wm = document.getElementById('invWatermark');
-            let newStatus = newDue > 0 ? 'CREDIT' : 'PAID';
-            wm.innerText = newStatus;
-            wm.className = `watermark ${newStatus === 'PAID' ? 'wm-paid' : 'wm-credit'}`;
-        }
-
-        function saveChecklistChanges() {
-            if(!confirm("Modify this invoice? Unchecked items will be removed permanently.")) return;
-            
-            let newItems = [];
-            let newTotal = 0;
-            currentInvoiceData.items.forEach((p, i) => {
-                let cb = document.getElementById(`chkItem_${i}`);
-                if(cb && cb.checked) {
-                    newItems.push(p);
-                    newTotal += (p.qty * p.cartPrice);
-                }
-            });
-            
-            if(newItems.length === 0) {
-                alert("Cannot save an empty invoice!");
-                return;
-            }
-
-            currentInvoiceData.items = newItems;
-            currentInvoiceData.total = newTotal;
-            
-            let due = newTotal - currentInvoiceData.received;
-            currentInvoiceData.due = due > 0 ? due : 0;
-            currentInvoiceData.status = currentInvoiceData.due > 0 ? 'CREDIT' : 'PAID';
-            
-            let historyIndex = salesHistory.findIndex(s => s.invNo === currentInvoiceData.invNo);
-            if(historyIndex > -1) {
-                salesHistory[historyIndex] = currentInvoiceData;
-            }
-            
-            saveData();
-            isChecklistMode = false;
-            
-            refreshActiveView();
-            prepareInvoiceDOM(currentInvoiceData);
-            alert("Invoice updated successfully!");
-        }
-
-        function toast(msg, ms) {
-            let t = document.getElementById('pdfToast');
-            if (!t) {
-                t = document.createElement('div');
-                t.id = 'pdfToast';
-                t.style.cssText = 'position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#222;color:#fff;' +
-                    'padding:10px 18px;border-radius:20px;font-size:13px;z-index:1000001;display:none;max-width:85%;text-align:center;';
-                document.body.appendChild(t);
-            }
-            t.textContent = msg;
-            t.style.display = 'block';
-            clearTimeout(t._h);
-            if (ms) t._h = setTimeout(function () { t.style.display = 'none'; }, ms);
-        }
-        
-        function hideToast() { 
-            let t = document.getElementById('pdfToast'); 
-            if (t) t.style.display = 'none'; 
-        }
-
-        function legacyCopy(txt) {
-            var ta = document.createElement('textarea');
-            ta.value = txt; ta.style.cssText = 'position:fixed;opacity:0;';
-            document.body.appendChild(ta); ta.select();
-            try { document.execCommand('copy'); } catch (e) {}
-            ta.remove();
-        }
-
-        function showLinkSheet(link, name) {
-            let old = document.getElementById('pdfLinkSheet'); if (old) old.remove();
-            let wrap = document.createElement('div');
-            wrap.id = 'pdfLinkSheet';
-            wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000000;display:flex;align-items:flex-end;';
-            let wa = 'https://wa.me/?text=' + encodeURIComponent('Invoice from Bholanath Store: ' + link);
-            let btn = 'display:block;text-align:center;text-decoration:none;border:none;border-radius:8px;padding:12px;' +
-                'font-weight:600;font-size:14px;width:100%;margin-top:10px;color:#fff;cursor:pointer;';
-            wrap.innerHTML =
-                '<div style="background:#fff;width:100%;border-radius:16px 16px 0 0;padding:18px 16px 24px;">' +
-                '<div style="font-weight:700;font-size:16px;margin-bottom:4px;"><i class="fas fa-file-pdf" style="color:#e63946"></i> PDF Ready!</div>' +
-                '<div style="font-size:12px;color:#666;margin-bottom:10px;">' + name + '</div>' +
-                '<a href="' + link + '" target="_blank" rel="noopener" style="' + btn + 'background:#e63946;">Open / Download PDF</a>' +
-                '<a href="' + wa + '" target="_blank" rel="noopener" style="' + btn + 'background:#25D366;">Share link on WhatsApp</a>' +
-                '<button id="pdfCopyBtn" style="' + btn + 'background:#0077b6;">Copy Link</button>' +
-                '<button id="pdfCloseBtn" style="' + btn + 'background:#6c757d;">Close</button></div>';
-            document.body.appendChild(wrap);
-            document.getElementById('pdfCopyBtn').onclick = function () {
-                if (navigator.clipboard) { 
-                    navigator.clipboard.writeText(link).catch(()=>{ legacyCopy(link); }); 
-                } else { 
-                    legacyCopy(link); 
-                }
-                toast('Link copied to clipboard!', 1800);
-            };
-            document.getElementById('pdfCloseBtn').onclick = function () { wrap.remove(); };
-        }
-
-        window.downloadInvoicePDF = async function () {
-            if(!currentInvoiceData) return;
-            prepareInvoiceDOM(currentInvoiceData);
-
-            let el = document.getElementById('printArea');
-            let name = 'Invoice_' + currentInvoiceData.invNo + '.pdf';
-            toast('Generating PDF...');
-
-            try {
-                let blob = await html2pdf().set({
-                    margin: 8,
-                    image: { type: 'jpeg', quality: 0.95 },
-                    html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
-                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-                }).from(el).outputPdf('blob');
-
-                let ua = navigator.userAgent || '';
-                let isWebView = /Android/i.test(ua) && /;\s*wv\)|Version\/\d+\.\d+/i.test(ua);
-
-                if (!isWebView) {
-                    let url = URL.createObjectURL(blob);
-                    let a = document.createElement('a');
-                    a.href = url; a.download = name;
-                    document.body.appendChild(a); a.click();
-                    setTimeout(function () { a.remove(); URL.revokeObjectURL(url); }, 4000);
-                    toast('PDF Downloaded', 2000);
-                    return;
-                }
-
-                toast('Uploading to Cloud Bridge...');
-                let fd = new FormData();
-                fd.append('file', blob, name);
-                
-                let res = await fetch('https://tmpfiles.org/api/v1/upload', { method: 'POST', body: fd });
-                let json = await res.json();
-                let dlUrl = json && json.data && json.data.url;
-
-                if (!dlUrl) throw new Error('Upload failed');
-                dlUrl = dlUrl.replace('http://', 'https://').replace('tmpfiles.org/', 'tmpfiles.org/dl/');
-                
-                hideToast();
-                showLinkSheet(dlUrl, name);
-
-            } catch (err) {
-                console.error(err);
-                toast('Failed. Please check internet connection.', 4000);
+            // Keep admin logged in if session exists
+            if(sessionStorage.getItem('isAdmin') === 'true') {
+                showAdminPanel();
             }
         };
 
-        function prepareInvoiceDOM(invData) {
-            currentInvoiceData = JSON.parse(JSON.stringify(invData)); 
-            isChecklistMode = false;
-            
-            document.getElementById('invCustName').innerText = currentInvoiceData.custName;
-            document.getElementById('invCustPhone').innerText = currentInvoiceData.custPhone || '';
-            document.getElementById('invDate').innerText = currentInvoiceData.date;
-            document.getElementById('invNo').innerText = currentInvoiceData.invNo;
-            
-            renderInvoiceItemsTable();
-            
-            document.getElementById('btnToggleChecklist').style.display = 'block';
-            document.getElementById('btnSaveChecklist').style.display = 'none';
-            document.getElementById('btnWaShare').style.display = 'block';
-            document.getElementById('btnPdfDownload').style.display = 'block';
-            let saveDoneBtn = document.getElementById('saveInvoiceBtn');
-            if (saveDoneBtn.dataset.origDisplay) saveDoneBtn.style.display = saveDoneBtn.dataset.origDisplay;
-            
-            const qrBox = document.getElementById('qrContainer');
-            if(currentInvoiceData.upi) {
-                qrBox.style.display = 'block'; 
-                document.getElementById('qrcode').innerHTML = ""; 
-                new QRCode(document.getElementById("qrcode"), { 
-                    text: `upi://pay?pa=${currentInvoiceData.upi}&pn=BholanathStore&am=${currentInvoiceData.total}&cu=INR`, 
-                    width: 100, height: 100 
-                });
-            } else { 
-                qrBox.style.display = 'none'; 
-            }
+        // Save to LocalStorage (Preparation for Firebase)
+        function saveData() {
+            localStorage.setItem('commerceNotesDB', JSON.stringify(dbData));
+            // When connecting Firebase, this is where you'll do: firebase.database().ref('portal').set(dbData);
         }
 
-        function shareOnWhatsApp() {
-            if(!currentInvoiceData) return;
-            let inv = currentInvoiceData;
-            
-            let text = `*Bholanath Store*\n`;
-            text += `Khairabari, Assam\n`;
-            text += `------------------------\n`;
-            text += `Inv: ${inv.invNo}\n`;
-            text += `Date: ${inv.date}\n`;
-            text += `Customer: ${inv.custName}\n`;
-            if (inv.custPhone) text += `Phone: ${inv.custPhone}\n`;
-            text += `------------------------\n`;
-            text += `*Items:*\n`;
-            
-            inv.items.forEach((item, index) => {
-                let itemTotal = item.qty * item.cartPrice;
-                text += `${index + 1}. ${item.name} (x${item.qty}) - ₹${itemTotal}\n`;
-            });
-            
-            text += `------------------------\n`;
-            text += `Total Amount: ₹${inv.total}\n`;
-            text += `Received: ₹${inv.received}\n`;
-            text += `Due (Credit): ₹${inv.due}\n`;
-            text += `Status: *${inv.status}*\n`;
-            text += `------------------------\n`;
-            text += `Thank You!\n`;
-
-            const whatsappUrl = `whatsapp://send?phone=${inv.custPhone ? '91' + inv.custPhone : ''}&text=${encodeURIComponent(text)}`;
-            window.location.href = whatsappUrl;
-        }
-
-        function getNextInvoiceNo() {
-            let maxNum = 0;
-            salesHistory.forEach(s => {
-                if (s.invNo && s.invNo.startsWith("BS-")) {
-                    let numPart = s.invNo.replace("BS-", "");
-                    let num = parseInt(numPart);
-                    if (!isNaN(num) && num > maxNum) { maxNum = num; }
-                }
-            });
-            let nextNum = maxNum > 0 ? maxNum + 1 : 1001;
-            return "BS-" + String(nextNum).padStart(5, '0');
-        }
-
-        function stopProp(e) { if(e) { e.preventDefault(); e.stopPropagation(); } }
-
-        function handleStartPress(type, index) {
-            if(activeSelectMode !== null) return; 
-            isPressing = true;
-            pressTimer = setTimeout(() => {
-                if (isPressing) {
-                    isPressing = false;
-                    showOptions(type, index);
-                }
-            }, 500); 
-        }
-        function handleEndPress() { isPressing = false; clearTimeout(pressTimer); }
-
-        function showOptions(type, index) {
-            closeAllOptions();
-            activeOptionsId = `opts-${type}-${index}`;
-            const el = document.getElementById(activeOptionsId);
-            if(el) el.classList.add('show');
-        }
-        function closeAllOptions(e) {
-            document.querySelectorAll('.card-opts').forEach(el => el.classList.remove('show'));
-            activeOptionsId = null;
-            document.getElementById('custSuggestions').style.display = 'none'; 
-        }
-        function closeOptionsFix(e) { stopProp(e); closeAllOptions(); }
-
-        function startSelection(type, index, e) {
-            stopProp(e); closeAllOptions();
-            activeSelectMode = type; selectedIndexes.clear(); selectedIndexes.add(index);
-            updateSelectionBarUI();
-            refreshActiveView();
-        }
-        function handleItemClick(type, index, e) {
-            if(activeOptionsId) { closeAllOptions(); return; }
-            if (activeSelectMode === type) {
-                if (selectedIndexes.has(index)) selectedIndexes.delete(index);
-                else selectedIndexes.add(index);
-                if (selectedIndexes.size === 0) exitSelectionMode();
-                else { 
-                    updateSelectionBarUI(); 
-                    refreshActiveView();
-                }
-            } else if (activeSelectMode === null) {
-                if(type === 'history' || type === 'cdhistory') {
-                    prepareInvoiceDOM(salesHistory[index]);
-                    document.getElementById('saveInvoiceBtn').style.display = 'none';
-                    document.getElementById('bottomNav').style.display = 'none'; 
-                    document.getElementById('invoiceModal').style.display = 'block'; 
-                    document.getElementById('invoiceModal').scrollTop = 0;
-                }
-                if(type === 'product') editP(index);
-                if(type === 'customer') showCustomerDetails(index);
-            }
-        }
-
-        function updateSelectionBarUI() {
-            document.getElementById('selectionCount').innerText = `${selectedIndexes.size} Selected`;
-            document.getElementById('selectionBar').classList.add('show');
-            document.getElementById('bottomNav').style.display = 'none';
-            const actions = document.getElementById('selectionActions');
-            if(activeSelectMode === 'trash') {
-                actions.innerHTML = `<button onclick="restoreSelectedItems()"><i class="fas fa-undo"></i></button><button onclick="deleteSelectedItems()"><i class="fas fa-trash"></i></button><button onclick="exitSelectionMode()"><i class="fas fa-times"></i></button>`;
-            } else {
-                actions.innerHTML = `<button onclick="deleteSelectedItems()"><i class="fas fa-trash"></i></button><button onclick="exitSelectionMode()"><i class="fas fa-times"></i></button>`;
-            }
-        }
-        function exitSelectionMode() {
-            activeSelectMode = null; selectedIndexes.clear();
-            document.getElementById('selectionBar').classList.remove('show'); document.getElementById('bottomNav').style.display = 'flex';
-            refreshActiveView();
-        }
+        /* --- AUTHENTICATION --- */
+        function openLoginModal() { document.getElementById('login-modal').style.display = 'flex'; }
+        function closeLoginModal() { document.getElementById('login-modal').style.display = 'none'; }
         
-        function deleteSelectedItems() {
-            if(selectedIndexes.size === 0) return;
-            let indexes = Array.from(selectedIndexes).sort((a,b) => b-a);
-            
-            if (activeSelectMode === 'product') {
-                if(confirm("Permanently delete selected products?")) { indexes.forEach(i => products.splice(i, 1)); saveData(); exitSelectionMode(); }
-            } else if (activeSelectMode === 'history' || activeSelectMode === 'cdhistory') {
-                if(confirm("Move selected to Trash?")) { 
-                    indexes.forEach(i => { trashHistory.push(salesHistory[i]); salesHistory.splice(i, 1); }); 
-                    saveData(); exitSelectionMode(); 
-                }
-            } else if (activeSelectMode === 'trash') {
-                if(confirm("Permanently Delete selected items?")) { indexes.forEach(i => trashHistory.splice(i, 1)); saveData(); exitSelectionMode(); }
-            } else if (activeSelectMode === 'customer') {
-                if(confirm("Permanently Delete selected customers? (Sales history will not be deleted)")) { indexes.forEach(i => customers.splice(i, 1)); saveData(); exitSelectionMode(); }
-            }
-        }
-        function restoreSelectedItems() {
-            if(selectedIndexes.size === 0) return;
-            let indexes = Array.from(selectedIndexes).sort((a,b) => b-a);
-            if(confirm("Restore selected invoices?")) { indexes.forEach(i => { salesHistory.push(trashHistory[i]); trashHistory.splice(i, 1); }); saveData(); exitSelectionMode(); }
-        }
+        function verifyLogin() {
+            const email = document.getElementById('login-email').value;
+            const pass = document.getElementById('login-password').value;
 
-        // --- BARCODE SCANNER LOGIC (OPTIMIZED FOR FAST OPENING) ---
-        let html5QrCode = null;
-        let activeScannerMode = '';
-        let currentFacingMode = "environment"; 
-        let isFlashlightOn = false;
-        let candidateText = "";
-        let candidateCount = 0;
-        let isScanningActive = false;
-
-        function openScanner(mode) {
-            activeScannerMode = mode; 
-            isFlashlightOn = false;
-            candidateText = "";
-            candidateCount = 0;
-            isScanningActive = true;
-            
-            // Show modal instantly without waiting for camera
-            document.getElementById('customScannerModal').style.display = 'flex';
-            
-            // Yield to main thread so UI updates immediately, then load heavy camera
-            setTimeout(() => {
-                if(!html5QrCode) {
-                    html5QrCode = new Html5Qrcode("reader", {
-                        formatsToSupport: [ 
-                            Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.CODE_128,
-                            Html5QrcodeSupportedFormats.UPC_A, Html5QrcodeSupportedFormats.EAN_8, Html5QrcodeSupportedFormats.QR_CODE
-                        ],
-                        verbose: false
-                    });
-                }
-                
-                const config = {
-                    fps: 15,
-                    qrbox: (viewfinderWidth, viewfinderHeight) => {
-                        const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-                        return { width: Math.floor(minEdge * 0.85), height: Math.floor(minEdge * 0.5) };
-                    },
-                    aspectRatio: 1.333334
-                };
-
-                html5QrCode.start({ facingMode: currentFacingMode }, config, onScanSuccess, (err)=>{})
-                .catch(err => {
-                    alert("Camera permission required.");
-                    closeScanner();
-                });
-            }, 50);
-        }
-
-        async function toggleFlashlight() {
-            if (html5QrCode && html5QrCode.getState() === 2) { 
-                isFlashlightOn = !isFlashlightOn;
-                await html5QrCode.applyVideoConstraints({ advanced: [{ torch: isFlashlightOn }] }).catch(e=>alert("Flashlight not supported."));
-            }
-        }
-
-        function flipCamera() {
-            if (html5QrCode && html5QrCode.getState() === 2) {
-                html5QrCode.stop().then(() => { 
-                    currentFacingMode = (currentFacingMode === "environment") ? "user" : "environment"; 
-                    openScanner(activeScannerMode); 
-                });
-            }
-        }
-
-        function onScanSuccess(decodedText) {
-            if (!isScanningActive || !decodedText) return;
-
-            if (decodedText === candidateText) {
-                candidateCount++;
+            if(email === "pauldebojit629@gmail.com" && pass === "94016") {
+                sessionStorage.setItem('isAdmin', 'true');
+                closeLoginModal();
+                showAdminPanel();
+                alert("Welcome Admin!");
+                document.getElementById('login-email').value = "";
+                document.getElementById('login-password').value = "";
             } else {
-                candidateText = decodedText;
-                candidateCount = 1;
-                return;
-            }
-
-            if (candidateCount >= 2) {
-                isScanningActive = false;
-                try { 
-                    const ctx = new (window.AudioContext || window.webkitAudioContext)(); 
-                    const osc = ctx.createOscillator(); 
-                    osc.type = 'sine'; 
-                    osc.frequency.setValueAtTime(1000, ctx.currentTime); 
-                    osc.connect(ctx.destination); 
-                    osc.start(); 
-                    osc.stop(ctx.currentTime + 0.1); 
-                } catch(e){}
-                
-                const verifiedCode = decodedText.trim();
-                closeScanner();
-                
-                if(activeScannerMode === 'product') {
-                    document.getElementById('pBarcode').value = verifiedCode;
-                } else if(activeScannerMode === 'sell') {
-                    const product = products.find(p => p.barcode && p.barcode.trim() === verifiedCode);
-                    if(product) { 
-                        addToCart(product); 
-                    } else { 
-                        alert("Barcode read: " + verifiedCode + "\nNo product found in directory with this barcode."); 
-                    }
-                }
+                alert("Invalid Email or Password!");
             }
         }
 
-        function closeScanner() {
-            isScanningActive = false;
-            if(html5QrCode && html5QrCode.getState() === 2) {
-                html5QrCode.stop().then(() => html5QrCode.clear()).catch(()=>{});
-            }
-            document.getElementById('customScannerModal').style.display = 'none';
+        function showAdminPanel() {
+            document.getElementById('admin-panel').style.display = 'block';
+            document.getElementById('auth-btn').style.display = 'none';
         }
 
-        // --- IN-APP NATIVE PHOTO CAMERA ---
-        let photoStream = null;
-        let photoFacingMode = 'environment';
-        let isPhotoFlashlightOn = false;
-
-        async function openPhotoCamera() {
-            document.getElementById('photoCameraModal').style.display = 'flex';
-            try {
-                if (photoStream) { photoStream.getTracks().forEach(t => t.stop()); }
-                photoStream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: photoFacingMode } 
-                });
-                const videoEl = document.getElementById('photoVideo');
-                videoEl.srcObject = photoStream;
-                videoEl.play().catch(e => console.log("Auto-play prevented", e)); 
-            } catch(e) {
-                alert("Camera access denied! Please grant permission.");
-                closePhotoCamera();
-            }
+        function logoutAdmin() {
+            sessionStorage.removeItem('isAdmin');
+            document.getElementById('admin-panel').style.display = 'none';
+            document.getElementById('auth-btn').style.display = 'block';
         }
 
-        function closePhotoCamera() {
-            if(photoStream) { photoStream.getTracks().forEach(t => t.stop()); photoStream = null; }
-            document.getElementById('photoCameraModal').style.display = 'none';
+        /* --- ADMIN FUNCTIONS --- */
+        function updateNotice() {
+            const newNotice = document.getElementById('new-notice').value;
+            if(!newNotice) return alert("Notice cannot be empty!");
+            dbData.notice = newNotice;
+            document.getElementById('notice-text').innerText = newNotice;
+            document.getElementById('new-notice').value = "";
+            saveData();
+            alert("Notice updated successfully!");
         }
 
-        function flipPhotoCamera() {
-            photoFacingMode = (photoFacingMode === 'environment') ? 'user' : 'environment';
-            openPhotoCamera();
-        }
-
-        async function togglePhotoFlashlight() {
-            if(photoStream) {
-                const track = photoStream.getVideoTracks()[0];
-                const capabilities = track.getCapabilities();
-                if (capabilities.torch) {
-                    isPhotoFlashlightOn = !isPhotoFlashlightOn;
-                    try {
-                        await track.applyConstraints({
-                            advanced: [{ torch: isPhotoFlashlightOn }]
-                        });
-                    } catch (e) {
-                        alert("Flashlight could not be turned on.");
-                    }
-                } else {
-                    alert("Flashlight not supported on this device/camera.");
-                }
-            }
-        }
-
-        function capturePhoto() {
-            const video = document.getElementById('photoVideo');
-            if(!video.videoWidth) return;
-            const canvas = document.createElement('canvas');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            canvas.getContext('2d').drawImage(video, 0, 0);
+        function addSubject() {
+            const newSubject = document.getElementById('new-subject').value.trim();
+            if(!newSubject) return alert("Enter a subject name!");
+            if(dbData.subjects.includes(newSubject)) return alert("Subject already exists!");
             
-            const rawDataUrl = canvas.toDataURL('image/jpeg', 0.8);
-            processImageTo3x4(rawDataUrl);
-            closePhotoCamera();
+            dbData.subjects.push(newSubject);
+            document.getElementById('new-subject').value = "";
+            saveData();
+            renderSubjects();
+            alert("Subject added successfully!");
         }
 
-        function processImageTo3x4(imgSrc) {
-            const img = new Image();
-            img.onload = function() {
-                const canvas = document.createElement('canvas');
-                const targetAspect = 3 / 4; 
-                
-                let sWidth = img.width;
-                let sHeight = img.height;
-                
-                if (sWidth / sHeight > targetAspect) {
-                    sWidth = sHeight * targetAspect; 
-                } else {
-                    sHeight = sWidth / targetAspect; 
-                }
-                
-                const sx = (img.width - sWidth) / 2;
-                const sy = (img.height - sHeight) / 2;
-                
-                canvas.width = 150; 
-                canvas.height = 200;
-                
-                canvas.getContext('2d').drawImage(img, sx, sy, sWidth, sHeight, 0, 0, 150, 200);
-                base64ImageString = canvas.toDataURL('image/jpeg', 0.6);
-                
-                document.getElementById('pImgFallback').style.display = 'none';
-                const preview = document.getElementById('pImgPreview');
-                preview.src = base64ImageString;
-                preview.style.display = 'block';
+        function addNote() {
+            const subject = document.getElementById('subject-select').value;
+            const title = document.getElementById('note-title').value;
+            const text = document.getElementById('note-text').value;
+
+            if(!title || !text) return alert("Please fill both Title and Content!");
+
+            const newNote = {
+                id: Date.now(),
+                subject: subject,
+                title: title,
+                text: text,
+                date: new Date().toLocaleDateString('en-IN')
             };
-            img.src = imgSrc;
+
+            dbData.notes.unshift(newNote); // Add to beginning
+            document.getElementById('note-title').value = "";
+            document.getElementById('note-text').value = "";
+            saveData();
+            renderNotes();
+            alert("Note uploaded successfully!");
         }
 
-        function handleImageUpload(e) {
-            const file = e.target.files[0]; if(!file) return; 
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                processImageTo3x4(event.target.result); 
-            }; 
-            reader.readAsDataURL(file);
-        }
-
-        function openNewSale() {
-            cart = []; activeEditInvoiceIndex = -1; 
-            document.getElementById('sellTitle').innerText = "New Sale";
-            document.getElementById('custName').value = ''; document.getElementById('custPhone').value = ''; 
-            document.getElementById('receivedAmt').value = ''; document.getElementById('upiId').value = '';
+        /* --- USER DISPLAY FUNCTIONS --- */
+        function renderSubjects() {
+            // Update Admin Select Dropdown
+            const select = document.getElementById('subject-select');
+            select.innerHTML = "";
             
-            document.getElementById('searchProductGroup').style.display = 'flex';
-            document.getElementById('btnDirectEntry').style.display = 'none';
-            
-            updateCart(); showSection('addSell');
+            // Update User Filters
+            const filters = document.getElementById('subject-filters');
+            filters.innerHTML = `<button class="filter-btn ${currentFilter === 'All' ? 'active' : ''}" onclick="setFilter('All')">All Subjects</button>`;
+
+            dbData.subjects.forEach(sub => {
+                // Add to Select
+                const option = document.createElement('option');
+                option.value = sub;
+                option.innerText = sub;
+                select.appendChild(option);
+
+                // Add to Filters
+                const btn = document.createElement('button');
+                btn.className = `filter-btn ${currentFilter === sub ? 'active' : ''}`;
+                btn.innerText = sub;
+                btn.onclick = () => setFilter(sub);
+                filters.appendChild(btn);
+            });
         }
 
-        function openAddCreditDirect() {
-            cart = []; activeEditInvoiceIndex = -1;
-            document.getElementById('sellTitle').innerText = "New Credit Sale";
-            document.getElementById('custName').value = ''; document.getElementById('custPhone').value = ''; 
-            document.getElementById('receivedAmt').value = ''; document.getElementById('upiId').value = '';
-            
-            document.getElementById('searchProductGroup').style.display = 'flex'; 
-            document.getElementById('btnDirectEntry').style.display = 'block'; 
-            
-            updateCart(); showSection('addSell');
+        function setFilter(subject) {
+            currentFilter = subject;
+            renderSubjects(); // Update active button colors
+            renderNotes();
         }
 
-        function addDirectAmountItem() {
-            cart.push({ name: "Direct Entry Amount", qty: 1, cartPrice: 0 });
-            updateCart();
-        }
+        function renderNotes() {
+            const container = document.getElementById('notes-display');
+            const searchQuery = document.getElementById('search-bar').value.toLowerCase();
+            container.innerHTML = "";
 
-        function directEditInvoice(index, e) {
-            stopProp(e); closeAllOptions();
-            const inv = salesHistory[index];
-            activeEditInvoiceIndex = index; 
-            cart = [...inv.items];
-            document.getElementById('sellTitle').innerText = "Edit Sale";
-            document.getElementById('custName').value = inv.custName === "Walk-in Customer" ? "" : inv.custName; 
-            document.getElementById('custPhone').value = inv.custPhone || '';
-            document.getElementById('receivedAmt').value = inv.received || '';
-            document.getElementById('upiId').value = inv.upi || '';
-            
-            document.getElementById('searchProductGroup').style.display = 'flex';
-            document.getElementById('btnDirectEntry').style.display = inv.status === "CREDIT" ? 'block' : 'none';
-            
-            updateCart(); showSection('addSell');
-        }
+            const filteredNotes = dbData.notes.filter(note => {
+                const matchSubject = (currentFilter === 'All') || (note.subject === currentFilter);
+                const matchSearch = note.title.toLowerCase().includes(searchQuery) || note.text.toLowerCase().includes(searchQuery);
+                return matchSubject && matchSearch;
+            });
 
-        function directEditProduct(index, e) { stopProp(e); closeOptionsFix(); editP(index); }
-
-        function getProductImgHtml(imgSrc, sizeCls="card-img") {
-            if(imgSrc && imgSrc.startsWith('data:image')) return `<img src="${imgSrc}" class="${sizeCls}">`;
-            return `<div class="fallback-icon ${sizeCls}"><i class="fas fa-box-open"></i></div>`;
-        }
-
-        function openAddProductMode() {
-            document.getElementById('productModalTitle').innerText = "Add Product"; document.getElementById('editIndex').value = "-1";
-            document.getElementById('pBarcode').value = ''; document.getElementById('pName').value = ''; document.getElementById('pPrice').value = '';
-            base64ImageString = ""; document.getElementById('pImgFallback').style.display = 'flex'; document.getElementById('pImgPreview').style.display = 'none';
-            showSection('addProductModal');
-        }
-
-        function saveProduct() {
-            const barcode = document.getElementById('pBarcode').value.trim(); 
-            const name = document.getElementById('pName').value.trim(); 
-            const price = parseFloat(document.getElementById('pPrice').value);
-            const editIndex = parseInt(document.getElementById('editIndex').value);
-            
-            if(!name || isNaN(price)) { 
-                alert("Enter valid Name and Price"); 
-                return; 
-            }
-
-            const isNameDuplicate = products.some((p, idx) => idx !== editIndex && p.name.trim().toLowerCase() === name.toLowerCase());
-            if(isNameDuplicate) {
-                alert("This product name already exists! Please use a unique name.");
+            if(filteredNotes.length === 0) {
+                container.innerHTML = `<p style="grid-column: 1/-1; text-align: center; color: #6b7280; padding: 40px;">No notes found.</p>`;
                 return;
             }
 
-            if(barcode) {
-                const isBarcodeDuplicate = products.some((p, idx) => idx !== editIndex && p.barcode && p.barcode.trim().toLowerCase() === barcode.toLowerCase());
-                if(isBarcodeDuplicate) {
-                    alert("This barcode is already assigned to another product!");
-                    return;
-                }
-            }
-
-            const pData = { barcode, name, price, image: base64ImageString };
-            if(editIndex > -1) products[editIndex] = pData; else products.push(pData);
-            
-            saveData(); 
-            refreshActiveView(); // Renders superfast
-            showSection('products');
-            showSuccessOverlay("Product Added Successfully!", false);
-        }
-
-        function renderProducts() {
-            const list = document.getElementById('productList'); const q = document.getElementById('searchDirProduct').value.toLowerCase();
-            let filtered = [...products].sort((a,b) => a.name.localeCompare(b.name)).filter(p => p.name.toLowerCase().includes(q));
-            
-            let countDisp = document.getElementById('productCountDisplay');
-            if(countDisp) countDisp.innerText = filtered.length;
-
-            if (filtered.length === 0) {
-                list.innerHTML = '<p style="text-align:center;">No products.</p>';
-                return;
-            }
-            
-            let html = ''; // OPTIMIZATION: String building for ZERO LAG
-            filtered.forEach(p => {
-                const idx = products.indexOf(p); const isSelected = selectedIndexes.has(idx) ? 'selected-card' : '';
-                html += `
-                <div class="card ${isSelected}" onmousedown="handleStartPress('product', ${idx})" onmouseleave="handleEndPress()" onmouseup="handleEndPress()" ontouchstart="handleStartPress('product', ${idx})" ontouchmove="handleEndPress()" ontouchend="handleEndPress()" onclick="handleItemClick('product', ${idx}, event)">
-                    ${getProductImgHtml(p.image)}
-                    <div class="card-content">
-                        <h4 style="font-size:14px;">${p.name}</h4><p style="font-size:11px;color:gray;">Code: ${p.barcode||'N/A'}</p><h4 style="color:var(--primary-red);">₹${p.price.toFixed(2)}</h4>
-                    </div>
-                    
-                    <div class="card-opts" id="opts-product-${idx}" onclick="stopProp(event)">
-                        <button class="opt-btn" style="color:#0077b6;" onclick="directEditProduct(${idx}, event)"><i class="fas fa-edit"></i></button>
-                        <button class="opt-btn" style="color:var(--primary-red);" onclick="startSelection('product', ${idx}, event)"><i class="fas fa-check-square"></i></button>
-                        <button class="opt-btn" style="color:#333;" onclick="closeOptionsFix(event)"><i class="fas fa-times"></i></button>
-                    </div>
-                </div>`;
+            filteredNotes.forEach(note => {
+                const div = document.createElement('div');
+                div.className = 'note-card';
+                div.innerHTML = `
+                    <span class="note-subject">${note.subject}</span>
+                    <h3 class="note-title">${note.title}</h3>
+                    <div class="note-text">${note.text}</div>
+                    <span class="note-date">Added on: ${note.date}</span>
+                `;
+                container.appendChild(div);
             });
-            list.innerHTML = html;
-        }
-
-        function editP(index) {
-            const p = products[index]; document.getElementById('editIndex').value = index; document.getElementById('productModalTitle').innerText = "Edit Product";
-            document.getElementById('pName').value = p.name; document.getElementById('pPrice').value = p.price; document.getElementById('pBarcode').value = p.barcode || '';
-            base64ImageString = p.image || ""; 
-            if(base64ImageString) { document.getElementById('pImgFallback').style.display = 'none'; document.getElementById('pImgPreview').src = base64ImageString; document.getElementById('pImgPreview').style.display = 'block'; } 
-            else { document.getElementById('pImgFallback').style.display = 'flex'; document.getElementById('pImgPreview').style.display = 'none'; }
-            showSection('addProductModal');
-        }
-
-        window.addSuggestedProduct = function(idx) {
-            addToCart(products[idx]);
-            document.getElementById('searchProduct').value=''; 
-            document.getElementById('suggestions').style.display='none'; 
-        }
-
-        function showProductSuggestions(q) {
-            const box = document.getElementById('suggestions'); box.innerHTML = '';
-            if(!q) { box.style.display = 'none'; return; }
-            let matches = products.filter(p => p.name.toLowerCase().includes(q.toLowerCase()));
-            if(matches.length > 0) {
-                box.style.display = 'block';
-                let html = '';
-                matches.forEach(p => { 
-                    let idx = products.indexOf(p);
-                    html += `<div class="suggestion-item" onclick="addSuggestedProduct(${idx})">${getProductImgHtml(p.image, '')} <span style="margin-left:10px;">${p.name} - ₹${p.price}</span></div>`; 
-                });
-                box.innerHTML = html;
-            } else box.style.display = 'none';
-        }
-
-        function addToCart(p) {
-            const existing = cart.find(item => item.name === p.name);
-            if(existing) existing.qty += 1; else cart.push({ ...p, cartPrice: p.price, qty: 1 });
-            updateCart();
-        }
-        function customQty(index, val) { const newQty = parseInt(val); if(newQty > 0) { cart[index].qty = newQty; updateCart(); } }
-        function customPrice(index, val) { const newPrice = parseFloat(val); if(!isNaN(newPrice) && newPrice >= 0) { cart[index].cartPrice = newPrice; updateCart(); } }
-        
-        function updateCart() {
-            const list = document.getElementById('cartList'); totalAmount = 0;
-            if(cart.length === 0) { list.innerHTML = '<p style="text-align:center;padding:20px;">Cart is empty.</p>'; document.getElementById('cartTotal').innerText="0.00"; calculateDue(); return; }
-            let html = '';
-            cart.forEach((item, i) => {
-                const subtotal = item.cartPrice * item.qty; totalAmount += subtotal;
-                html += `<div style="background:#fff; padding:10px; border-radius:6px; margin-bottom:8px; border-left:4px solid var(--primary-red); box-shadow:0 1px 3px rgba(0,0,0,0.1);">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-weight:600;"><span>${i+1}. ${item.name}</span> <i class="fas fa-times" style="color:red; cursor:pointer;" onclick="cart.splice(${i},1); updateCart();"></i></div>
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div style="display:flex; gap:5px; align-items:center;">
-                            <input type="number" value="${item.qty}" onchange="customQty(${i}, this.value)" style="width:45px; height:30px; text-align:center; margin:0; padding:2px;">
-                            <span style="color:gray;">x ₹</span>
-                            <input type="number" value="${item.cartPrice}" onchange="customPrice(${i}, this.value)" style="width:60px; height:30px; margin:0; padding:2px;">
-                        </div>
-                        <div style="font-weight:700; color:var(--primary-red);">₹${subtotal.toFixed(2)}</div>
-                    </div>
-                </div>`;
-            });
-            list.innerHTML = html;
-            document.getElementById('cartTotal').innerText = totalAmount.toFixed(2); calculateDue();
-        }
-
-        function calculateDue() {
-            let rec = parseFloat(document.getElementById('receivedAmt').value) || 0;
-            let due = totalAmount - rec; document.getElementById('dueAmt').innerText = (due > 0 ? due : 0).toFixed(2);
-        }
-
-        function generateInvoice(isHistory, hData = null) {
-            if(!isHistory && cart.length === 0) { alert("Cart is empty!"); return; }
-            
-            let cName = document.getElementById('custName').value.trim() || "Walk-in Customer";
-            let cPhone = document.getElementById('custPhone').value.trim();
-
-            if(!isHistory) {
-                if(cPhone) {
-                    let existingWithPhone = customers.find(c => c.phone === cPhone);
-                    if(existingWithPhone && existingWithPhone.name.toLowerCase() !== cName.toLowerCase()) {
-                        alert("⚠️ Error: This phone number is already registered to customer '" + existingWithPhone.name + "'.\nDuplicate numbers are not allowed.");
-                        return;
-                    }
-                }
-            }
-
-            let rec = isHistory ? hData.received : (parseFloat(document.getElementById('receivedAmt').value) || 0);
-            let upi = isHistory ? hData.upi : document.getElementById('upiId').value;
-            let total = isHistory ? hData.total : totalAmount;
-            let due = total - rec; due = due > 0 ? due : 0; let status = due > 0 ? 'CREDIT' : 'PAID';
-
-            const invNumber = isHistory ? hData.invNo : getNextInvoiceNo();
-
-            const data = isHistory ? hData : {
-                custName: cName, custPhone: cPhone,
-                upi: upi, date: new Date().toLocaleString(), invNo: invNumber,
-                items: [...cart], total, received: rec, due, status
-            };
-            prepareInvoiceDOM(data);
-
-            let saveBtn = document.getElementById('saveInvoiceBtn');
-            saveBtn.style.display = isHistory ? 'none' : 'block';
-            saveBtn.dataset.origDisplay = saveBtn.style.display;
-
-            document.getElementById('bottomNav').style.display = 'none'; 
-            document.getElementById('invoiceModal').style.display = 'block'; 
-            document.getElementById('invoiceModal').scrollTop = 0;
-        }
-
-        function saveAndCloseInvoice() {
-            if (activeEditInvoiceIndex > -1) {
-                salesHistory[activeEditInvoiceIndex] = currentInvoiceData;
-                activeEditInvoiceIndex = -1;
-            } else { 
-                salesHistory.push(currentInvoiceData); 
-                
-                let cName = currentInvoiceData.custName;
-                let cPhone = currentInvoiceData.custPhone;
-                if(cName !== "Walk-in Customer") {
-                    let existingCust = customers.find(c => c.name.toLowerCase() === cName.toLowerCase());
-                    if(existingCust) {
-                        if(cPhone && !existingCust.phone) existingCust.phone = cPhone;
-                    } else {
-                        customers.push({ name: cName, phone: cPhone });
-                    }
-                }
-            }
-            saveData(); 
-            
-            document.getElementById('invoiceModal').style.display='none'; 
-            document.getElementById('bottomNav').style.display='flex';
-            showSection('home');
-            
-            showSuccessOverlay("Payment Successful!", true); 
-
-            cart = []; 
-            document.getElementById('custName').value = ''; document.getElementById('custPhone').value = ''; 
-            document.getElementById('receivedAmt').value = ''; document.getElementById('upiId').value = '';
-            updateCart();
-        }
-
-        function closeInvoiceUI() { document.getElementById('invoiceModal').style.display='none'; document.getElementById('bottomNav').style.display='flex'; }
-
-        function switchTab(tab) { currentTab = tab; exitSelectionMode(); document.querySelectorAll('.tab').forEach(t => t.classList.remove('active')); document.getElementById('tab-' + tab).classList.add('active'); renderHistory(); }
-
-        function renderHistory() {
-            const list = document.getElementById('historyList'); const q = document.getElementById('searchHistory').value.toLowerCase();
-            let filtered = salesHistory.slice().reverse();
-            if(currentTab === 'paid') filtered = filtered.filter(s => s.status === 'PAID');
-            if(currentTab === 'credit') filtered = filtered.filter(s => s.status === 'CREDIT');
-            filtered = filtered.filter(s => s.custName.toLowerCase().includes(q) || s.invNo.toLowerCase().includes(q) || s.date.toLowerCase().includes(q));
-
-            let countDisp = document.getElementById('invoiceCountDisplay');
-            if(countDisp) countDisp.innerText = filtered.length;
-
-            if (filtered.length === 0) {
-                list.innerHTML = '<p style="text-align:center;">No records.</p>';
-                return;
-            }
-            
-            let html = ''; // OPTIMIZATION: String building
-            filtered.forEach((sale) => {
-                const realIndex = salesHistory.indexOf(sale);
-                const isSelected = selectedIndexes.has(realIndex) ? 'selected-card' : '';
-                
-                html += `
-                <div class="card ${isSelected}" style="border-left:4px solid ${sale.status==='PAID' ? 'var(--green-paid)' : 'var(--primary-red)'}; cursor:pointer;"
-                     onmousedown="handleStartPress('history', ${realIndex})" onmouseleave="handleEndPress()" onmouseup="handleEndPress()" ontouchstart="handleStartPress('history', ${realIndex})" ontouchmove="handleEndPress()" ontouchend="handleEndPress()" onclick="handleItemClick('history', ${realIndex}, event)">
-                    <div class="card-content">
-                        <h4>${sale.custName} <span class="badge ${sale.status==='PAID' ? 'bg-paid' : 'bg-credit'}">${sale.status}</span></h4>
-                        <p style="font-size:11px;color:gray;">${sale.date} | ${sale.invNo}</p>
-                        <h4 style="font-size:14px; margin-top:3px;">Tot: ₹${sale.total} | <span style="color:red;">Due: ₹${sale.due}</span></h4>
-                    </div>
-                    
-                    <div class="card-opts" id="opts-history-${realIndex}" onclick="stopProp(event)">
-                        <button class="opt-btn" style="color:#0077b6;" onclick="directEditInvoice(${realIndex}, event)" title="Edit"><i class="fas fa-edit"></i></button>
-                        <button class="opt-btn" style="color:var(--primary-red);" onclick="startSelection('history', ${realIndex}, event)" title="Select"><i class="fas fa-check-square"></i></button>
-                        <button class="opt-btn" style="color:#333;" onclick="closeOptionsFix(event)" title="Close"><i class="fas fa-times"></i></button>
-                    </div>`;
-                    
-                if(sale.status === 'CREDIT') { html += `<button onclick="stopProp(event); openCreditPay(${realIndex})" class="btn-green" style="width:auto; padding:8px; pointer-events:auto; z-index:9;"><i class="fas fa-rupee-sign"></i> Pay</button>`; }
-                html += `</div>`; 
-            });
-            list.innerHTML = html;
-        }
-
-        function renderTrash() {
-            const list = document.getElementById('trashList'); const q = document.getElementById('searchTrash').value.toLowerCase();
-            let filtered = trashHistory.slice().reverse();
-            filtered = filtered.filter(s => s.custName.toLowerCase().includes(q) || s.invNo.toLowerCase().includes(q) || s.date.toLowerCase().includes(q));
-
-            if (filtered.length === 0) {
-                list.innerHTML = '<p style="text-align:center;">Trash is empty.</p>';
-                return;
-            }
-            
-            let html = '';
-            filtered.forEach((sale) => {
-                const realIndex = trashHistory.indexOf(sale);
-                const isSelected = selectedIndexes.has(realIndex) ? 'selected-card' : '';
-                
-                html += `
-                <div class="card ${isSelected}" style="border-left:4px solid gray; cursor:pointer;"
-                     onmousedown="handleStartPress('trash', ${realIndex})" onmouseleave="handleEndPress()" onmouseup="handleEndPress()" ontouchstart="handleStartPress('trash', ${realIndex})" ontouchmove="handleEndPress()" ontouchend="handleEndPress()" onclick="handleItemClick('trash', ${realIndex}, event)">
-                    <div class="card-content">
-                        <h4><del>${sale.custName}</del></h4>
-                        <p style="font-size:11px;color:gray;">${sale.date} | ${sale.invNo}</p>
-                        <h4 style="font-size:14px; margin-top:3px; color:gray;">Tot: ₹${sale.total}</h4>
-                    </div>
-                    
-                    <div class="card-opts" id="opts-trash-${realIndex}" onclick="stopProp(event)">
-                        <button class="opt-btn" style="color:var(--green-paid);" onclick="startSelection('trash', ${realIndex}, event)"><i class="fas fa-undo"></i></button>
-                        <button class="opt-btn" style="color:var(--primary-red);" onclick="startSelection('trash', ${realIndex}, event)"><i class="fas fa-check-square"></i></button>
-                        <button class="opt-btn" style="color:#333;" onclick="closeOptionsFix(event)"><i class="fas fa-times"></i></button>
-                    </div>
-                </div>`;
-            });
-            list.innerHTML = html;
-        }
-
-        function openCreditPay(index) {
-            activeCreditEditIndex = index; const sale = salesHistory[index];
-            document.getElementById('cpName').innerText = sale.custName; document.getElementById('cpTotal').innerText = sale.total;
-            document.getElementById('cpAlreadyRec').innerText = sale.received; document.getElementById('cpDue').innerText = sale.due;
-            document.getElementById('cpNewPay').value = ''; document.getElementById('creditPayModal').style.display = 'block';
-        }
-        function submitCreditPayment() {
-            let newPay = parseFloat(document.getElementById('cpNewPay').value); if(isNaN(newPay) || newPay <= 0) return;
-            let sale = salesHistory[activeCreditEditIndex]; sale.received += newPay; sale.due = sale.total - sale.received;
-            if(sale.due <= 0) { sale.due = 0; sale.status = 'PAID'; }
-            saveData(); document.getElementById('creditPayModal').style.display = 'none'; 
-            refreshActiveView();
-            showSuccessOverlay("Payment Received Successfully!", false); 
-        }
-
-        function updateReports() {
-            let tSale=0, tRec=0, tDue=0; 
-            salesHistory.forEach(s => { tSale+=s.total; tRec+=s.received; tDue+=s.due; });
-            document.getElementById('repTotalSales').innerText = tSale.toFixed(2); 
-            document.getElementById('repReceived').innerText = tRec.toFixed(2); 
-            document.getElementById('repDue').innerText = tDue.toFixed(2);
-        }
-
-        // OPTIMIZED showSection: No more blind re-rendering of 100+ images!
-        function showSection(id) { 
-            exitSelectionMode(); closeAllOptions();
-            document.querySelectorAll('.section').forEach(s=>s.classList.remove('active')); 
-            document.getElementById(id).classList.add('active'); 
-            
-            if(['home','products','reports'].includes(id)) { 
-                document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active')); 
-                document.getElementById('nav-'+id).classList.add('active'); 
-            }
-            
-            // Render ONLY what we are actually looking at
-            if(id === 'home') renderHistory();
-            if(id === 'products') renderProducts();
-            if(id === 'reports') updateReports();
-            if(id === 'trashSec') renderTrash();
-            if(id === 'customersSec') renderCustomers();
-            if(id === 'customerDetailsSec' && currentCustomerDetailIndex > -1) {
-                if(customers[currentCustomerDetailIndex]) renderCustomerDetails(); 
-            }
         }
     </script>
 </body>
